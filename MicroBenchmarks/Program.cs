@@ -1,5 +1,6 @@
 using System;
 using BenchmarkDotNet.Running;
+using MicroBenchmarks.NServiceBus;
 
 namespace MicroBenchmarks
 {
@@ -7,8 +8,7 @@ namespace MicroBenchmarks
     {
         static void Main(string[] args)
         {
-            var summary = BenchmarkRunner.Run<BatchedVsImmediateSimulated>();
-            Console.WriteLine(summary.ToString());
+            BenchmarkRunner.Run<MessageHandlerRegistry>();
             Console.ReadLine();
         }
     }
