@@ -98,6 +98,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="NServiceBus\ASQQeueNameGenerator.cs" />
     <Compile Include="NServiceBus\MessageHandlerRegistry.cs" />
     <Compile Include="NServiceBus\MessageHandlerRegistryPerf.cs" />
     <Compile Include="NServiceBus\MessageHandlerRegistrySize.cs" />
