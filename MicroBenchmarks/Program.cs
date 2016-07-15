@@ -1,8 +1,4 @@
-using System;
 using BenchmarkDotNet.Running;
-using MicroBenchmarks.NServiceBus;
-using MicroBenchmarks.Tasks;
-using System.Linq;
 
 namespace MicroBenchmarks
 {
