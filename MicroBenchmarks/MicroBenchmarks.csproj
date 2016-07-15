@@ -98,6 +98,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Async\TcpAyendeStyle.cs" />
     <Compile Include="NServiceBus\ASQQeueNameGenerator.cs" />
     <Compile Include="NServiceBus\MessageHandlerRegistry.cs" />
     <Compile Include="NServiceBus\MessageHandlerRegistryPerf.cs" />
@@ -113,6 +114,7 @@
     <Compile Include="Tasks\TaskCastWithAwaitVsCastExtension.cs" />
     <Compile Include="Tasks\TaskExtensions.cs" />
     <Compile Include="Tasks\TaskRunVsTaskFactoryClosure.cs" />
+    <Compile Include="Tasks\TaskRunVsTaskFactoryClosureWithMoreState.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
