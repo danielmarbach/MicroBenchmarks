@@ -193,6 +193,7 @@
     <Compile Include="Tasks\TaskExtensions.cs" />
     <Compile Include="Tasks\TaskRunVsTaskFactoryClosure.cs" />
     <Compile Include="Tasks\TaskRunVsTaskFactoryClosureWithMoreState.cs" />
+    <Compile Include="Tasks\TaskRunVsTaskFactoryClosureWithMoreStateUsingParameters.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
