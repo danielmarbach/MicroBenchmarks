@@ -105,6 +105,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Console, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Console.4.0.0\lib\net46\System.Console.dll</HintPath>
       <Private>True</Private>
@@ -185,6 +186,10 @@
     <Compile Include="NServiceBus\MessageHandlerRegistry.cs" />
     <Compile Include="NServiceBus\MessageHandlerRegistryPerf.cs" />
     <Compile Include="NServiceBus\MessageHandlerRegistrySize.cs" />
+    <Compile Include="NServiceBus\Pipeline.cs" />
+    <Compile Include="NServiceBus\PipelineException.cs" />
+    <Compile Include="NServiceBus\PipelineExecution.cs" />
+    <Compile Include="NServiceBus\PipelineWarmup.cs" />
     <Compile Include="Tasks\AwaitCastSimulator.cs" />
     <Compile Include="Tasks\BatchedVsImmediateSimulated.cs" />
     <Compile Include="Tasks\ConcurrencyLimitting.cs" />
