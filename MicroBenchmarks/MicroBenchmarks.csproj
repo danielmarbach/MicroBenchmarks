@@ -199,6 +199,7 @@
     <Compile Include="Tasks\TaskRunVsTaskFactoryClosureWithMoreState.cs" />
     <Compile Include="Tasks\TaskRunVsTaskFactoryClosureWithMoreStateUsingParameters.cs" />
     <Compile Include="Types\EnumerableVsList.cs" />
+    <Compile Include="Types\ReadonlyCollectionVsList.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
