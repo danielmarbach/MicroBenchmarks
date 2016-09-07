@@ -18,16 +18,19 @@ namespace MicroBenchmarks.NServiceBus
             }
         }
 
-        [Params(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)]
+//        [Params(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)]
+        [Params(2, 4, 8)]
         public int Calls { get; set; }
 
-        private PipelineModifications pipelineModifications;
-        private PipelineBeforeOptimization<IBehaviorContext> pipelineBeforeOptimizations;
-        private PipelineAfterOptimizations<IBehaviorContext> pipelineAfterOptimizations;
+        private static BehaviorContext behaviorContext;
+        private static PipelineModifications pipelineModifications;
+        private static PipelineBeforeOptimization<IBehaviorContext> pipelineBeforeOptimizations;
+        private static PipelineAfterOptimizations<IBehaviorContext> pipelineAfterOptimizations;
 
-        [Setup]
-        public void SetUp()
+        static PipelineExecution()
         {
+            behaviorContext = new BehaviorContext();
+
             pipelineModifications = new PipelineModifications();
             pipelineModifications.Additions.Add(RegisterStep.Create("1", typeof(Behavior1), "1", b => new Behavior1()));
             pipelineModifications.Additions.Add(RegisterStep.Create("2", typeof(Behavior1), "1", b => new Behavior1()));
@@ -61,7 +64,7 @@ namespace MicroBenchmarks.NServiceBus
         {
             for (int i = 0; i < Calls; i++)
             {
-                await pipelineBeforeOptimizations.Invoke(null).ConfigureAwait(false);
+                await pipelineBeforeOptimizations.Invoke(behaviorContext).ConfigureAwait(false);
             }
         }
 
@@ -70,8 +73,10 @@ namespace MicroBenchmarks.NServiceBus
         {
             for (int i = 0; i < Calls; i++)
             {
-                await pipelineAfterOptimizations.Invoke(null).ConfigureAwait(false);
+                await pipelineAfterOptimizations.Invoke(behaviorContext).ConfigureAwait(false);
             }
         }
+
+        class BehaviorContext : IBehaviorContext {}
     }
 }
