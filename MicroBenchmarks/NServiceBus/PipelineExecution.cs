@@ -18,8 +18,7 @@ namespace MicroBenchmarks.NServiceBus
             }
         }
 
-//        [Params(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)]
-        [Params(2, 4, 8)]
+        [Params(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)]
         public int Calls { get; set; }
 
         private static BehaviorContext behaviorContext;
@@ -57,6 +56,10 @@ namespace MicroBenchmarks.NServiceBus
                 pipelineModifications);
             pipelineAfterOptimizations = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModifications);
+
+            // warmup and cache
+            pipelineBeforeOptimizations.Invoke(behaviorContext).GetAwaiter().GetResult();
+            pipelineAfterOptimizations.Invoke(behaviorContext).GetAwaiter().GetResult();
         }
 
         [Benchmark(Baseline = true)]
