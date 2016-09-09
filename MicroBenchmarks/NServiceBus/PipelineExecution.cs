@@ -3,6 +3,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Jobs;
 
 namespace MicroBenchmarks.NServiceBus
 {
@@ -15,47 +16,46 @@ namespace MicroBenchmarks.NServiceBus
             {
                 Add(MarkdownExporter.GitHub);
                 Add(new MemoryDiagnoser());
+                Add(Job.Default.With(Mode.SingleRun).WithLaunchCount(1).WithWarmupCount(1).WithTargetCount(1));
+                Add(Job.Default.With(Mode.SingleRun).WithLaunchCount(1).WithWarmupCount(1).WithTargetCount(1).With(new GarbageCollection { Server = true }));
             }
         }
 
-        [Params(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)]
+        [Params(20000, 40000, 80000, 160000, 320000, 640000, 1280000)]
         public int Calls { get; set; }
 
-        private static BehaviorContext behaviorContext;
-        private static PipelineModifications pipelineModifications;
-        private static PipelineBeforeOptimization<IBehaviorContext> pipelineBeforeOptimizations;
-        private static PipelineAfterOptimizations<IBehaviorContext> pipelineAfterOptimizations;
+        [Params(10, 20, 40)]
+        public int PipelineDepth { get; set; }
 
-        static PipelineExecution()
+        private BehaviorContext behaviorContext;
+        private PipelineModifications pipelineModificationsBeforeOptimizations;
+        private PipelineModifications pipelineModificationsAfterOptimizations;
+        private PipelineBeforeOptimization<IBehaviorContext> pipelineBeforeOptimizations;
+        private PipelineAfterOptimizations<IBehaviorContext> pipelineAfterOptimizations;
+
+        [Setup]
+        public void SetUp()
         {
             behaviorContext = new BehaviorContext();
 
-            pipelineModifications = new PipelineModifications();
-            pipelineModifications.Additions.Add(RegisterStep.Create("1", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("2", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("3", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("4", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("5", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("6", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("7", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("8", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("9", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("10", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("11", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("12", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("13", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("14", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("15", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("16", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("17", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("18", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("19", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("20", typeof(Behavior1), "1", b => new Behavior1()));
+            pipelineModificationsBeforeOptimizations = new PipelineModifications();
+            for (int i = 0; i < PipelineDepth; i++)
+            {
+                pipelineModificationsBeforeOptimizations.Additions.Add(RegisterStep.Create(i.ToString(),
+                    typeof(Behavior1BeforeOptimization), i.ToString(), b => new Behavior1BeforeOptimization()));
+            }
+
+            pipelineModificationsAfterOptimizations = new PipelineModifications();
+            for (int i = 0; i < PipelineDepth; i++)
+            {
+                pipelineModificationsAfterOptimizations.Additions.Add(RegisterStep.Create(i.ToString(),
+                    typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
+            }
 
             pipelineBeforeOptimizations = new PipelineBeforeOptimization<IBehaviorContext>(null, new SettingsHolder(),
-                pipelineModifications);
+                pipelineModificationsBeforeOptimizations);
             pipelineAfterOptimizations = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
-                pipelineModifications);
+                pipelineModificationsAfterOptimizations);
 
             // warmup and cache
             pipelineBeforeOptimizations.Invoke(behaviorContext).GetAwaiter().GetResult();

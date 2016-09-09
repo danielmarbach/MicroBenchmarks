@@ -2,7 +2,9 @@ using System;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Jobs;
 
 namespace MicroBenchmarks.NServiceBus
 {
@@ -14,43 +16,62 @@ namespace MicroBenchmarks.NServiceBus
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
+                Add(new MemoryDiagnoser());
+                Add(Job.Default);
+                Add(Job.Default.With(new GarbageCollection { Server = true }));
             }
         }
 
-        private PipelineModifications pipelineModifications;
+        private BehaviorContext behaviorContext;
+        private PipelineModifications pipelineModificationsBeforeOptimizations;
+        private PipelineModifications pipelineModificationsAfterOptimizations;
         private PipelineBeforeOptimization<IBehaviorContext> pipelineBeforeOptimizations;
         private PipelineAfterOptimizations<IBehaviorContext> pipelineAfterOptimizations;
+
+        [Params(10, 20, 40)]
+        public int PipelineDepth { get; set; }
 
         [Setup]
         public void SetUp()
         {
-            pipelineModifications = new PipelineModifications();
-            pipelineModifications.Additions.Add(RegisterStep.Create("1", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("2", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("3", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("4", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("5", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("6", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("7", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("8", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("9", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("10", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("11", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("12", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("13", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("14", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("15", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("16", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("17", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("18", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("19", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("20", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("21", typeof(Throwing), "1", b => new Throwing()));
+            behaviorContext = new BehaviorContext();
+
+            pipelineModificationsBeforeOptimizations = new PipelineModifications();
+            for (int i = 0; i < PipelineDepth; i++)
+            {
+                pipelineModificationsBeforeOptimizations.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1BeforeOptimization), i.ToString(), b => new Behavior1BeforeOptimization()));
+            }
+            var stepdId = PipelineDepth + 1;
+            pipelineModificationsBeforeOptimizations.Additions.Add(RegisterStep.Create(stepdId.ToString(), typeof(Throwing), "1", b => new Throwing()));
+
+            pipelineModificationsAfterOptimizations = new PipelineModifications();
+            for (int i = 0; i < PipelineDepth; i++)
+            {
+                pipelineModificationsAfterOptimizations.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
+            }
+
+            pipelineModificationsAfterOptimizations.Additions.Add(RegisterStep.Create(stepdId.ToString(), typeof(Throwing), "1", b => new Throwing()));
 
             pipelineBeforeOptimizations = new PipelineBeforeOptimization<IBehaviorContext>(null, new SettingsHolder(),
-                pipelineModifications);
+                pipelineModificationsBeforeOptimizations);
             pipelineAfterOptimizations = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
-                pipelineModifications);
+                pipelineModificationsAfterOptimizations);
+
+            // warmup and cache
+            try
+            {
+                pipelineBeforeOptimizations.Invoke(behaviorContext).GetAwaiter().GetResult();
+            }
+            catch (Exception)
+            {
+            }
+            try
+            {
+                pipelineAfterOptimizations.Invoke(behaviorContext).GetAwaiter().GetResult();
+            }
+            catch (Exception)
+            {
+            }
         }
 
         [Benchmark(Baseline = true)]
@@ -58,7 +79,7 @@ namespace MicroBenchmarks.NServiceBus
         {
             try
             {
-                await pipelineBeforeOptimizations.Invoke(null).ConfigureAwait(false);
+                await pipelineBeforeOptimizations.Invoke(behaviorContext).ConfigureAwait(false);
             }
             catch (InvalidOperationException)
             {
@@ -71,7 +92,7 @@ namespace MicroBenchmarks.NServiceBus
         {
             try
             {
-                await pipelineAfterOptimizations.Invoke(null).ConfigureAwait(false);
+                await pipelineAfterOptimizations.Invoke(behaviorContext).ConfigureAwait(false);
             }
             catch (InvalidOperationException)
             {
@@ -85,5 +106,6 @@ namespace MicroBenchmarks.NServiceBus
                 throw new InvalidOperationException();
             }
         }
+        class BehaviorContext : IBehaviorContext { }
     }
 }

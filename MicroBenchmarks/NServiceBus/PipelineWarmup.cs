@@ -2,6 +2,7 @@
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Jobs;
 
 namespace MicroBenchmarks.NServiceBus
 {
@@ -14,42 +15,38 @@ namespace MicroBenchmarks.NServiceBus
             {
                 Add(MarkdownExporter.GitHub);
                 Add(new MemoryDiagnoser());
+                Add(Job.Default);
+                Add(Job.Default.With(new GarbageCollection { Server = true }));
             }
         }
 
-        private PipelineModifications pipelineModifications;
+        private PipelineModifications pipelineModificationsBeforeOptimizations;
+        private PipelineModifications pipelineModificationsAfterOptimizations;
+
+        [Params(10, 20, 40)]
+        public int PipelineDepth { get; set; }
 
         [Setup]
         public void SetUp()
         {
-            pipelineModifications = new PipelineModifications();
-            pipelineModifications.Additions.Add(RegisterStep.Create("1", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("2", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("3", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("4", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("5", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("6", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("7", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("8", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("9", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("10", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("11", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("12", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("13", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("14", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("15", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("16", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("17", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("18", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("19", typeof(Behavior1), "1", b => new Behavior1()));
-            pipelineModifications.Additions.Add(RegisterStep.Create("20", typeof(Behavior1), "1", b => new Behavior1()));
+            pipelineModificationsBeforeOptimizations = new PipelineModifications();
+            for (int i = 0; i < PipelineDepth; i++)
+            {
+                pipelineModificationsBeforeOptimizations.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1BeforeOptimization), i.ToString(), b => new Behavior1BeforeOptimization()));
+            }
+
+            pipelineModificationsAfterOptimizations = new PipelineModifications();
+            for (int i = 0; i < PipelineDepth; i++)
+            {
+                pipelineModificationsAfterOptimizations.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
+            }
         }
 
         [Benchmark(Baseline = true)]
         public PipelineBeforeOptimization<IBehaviorContext> V6_PipelineBeforeOptimizations()
         {
             var pipeline = new PipelineBeforeOptimization<IBehaviorContext>(null, new SettingsHolder(),
-                pipelineModifications);
+                pipelineModificationsBeforeOptimizations);
             return pipeline;
         }
 
@@ -57,7 +54,7 @@ namespace MicroBenchmarks.NServiceBus
         public PipelineAfterOptimizations<IBehaviorContext> V6_PipelineAfterOptimizations()
         {
             var pipeline = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
-                pipelineModifications);
+                pipelineModificationsAfterOptimizations);
             return pipeline;
         }
     }
