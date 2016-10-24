@@ -178,6 +178,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Async\TcpAyendeStyle.cs" />
+    <Compile Include="Equality\ByteVsLongComparison.cs" />
     <Compile Include="Linq\LinqDistinct.cs" />
     <Compile Include="Linq\EnumerableVsList.cs" />
     <Compile Include="Linq\LinqSelect.cs" />
