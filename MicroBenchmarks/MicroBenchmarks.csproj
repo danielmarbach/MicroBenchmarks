@@ -203,7 +203,9 @@
     <Compile Include="Tasks\TaskCastSimulator.cs" />
     <Compile Include="Tasks\TaskCastWithAwaitVsCastExtension.cs" />
     <Compile Include="Tasks\TaskExtensions.cs" />
+    <Compile Include="Tasks\TaskExtensionsForWaitWithCancellation.cs" />
     <Compile Include="Tasks\TaskRunVsTaskFactoryClosure.cs" />
+    <Compile Include="Tasks\TaskWithWaitCancellation.cs" />
     <Compile Include="Tasks\TaskRunVsTaskFactoryClosureWithMoreState.cs" />
     <Compile Include="Tasks\TaskRunVsTaskFactoryClosureWithMoreStateUsingParameters.cs" />
     <Compile Include="Types\EnumerableVsList.cs" />
