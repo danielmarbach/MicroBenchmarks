@@ -13,6 +13,7 @@ namespace MicroBenchmarks.Linq
     public class EnumerableVsList
     {
         private List<int> list;
+        private IList<int> ilist;
 
         private class Config : ManualConfig
         {
@@ -23,19 +24,29 @@ namespace MicroBenchmarks.Linq
                 Add(StatisticColumn.AllStatistics);
             }
         }
-        [Params(2, 4, 8, 16, 32, 64)]
+        [Params(2, 4, 8, 16, 32, 64, 128)]
         public int Elements { get; set; }
 
         [Setup]
         public void SetUp()
         {
             list = Enumerable.Range(0, Elements).ToList();
+            ilist = list;
         }
 
         [Benchmark(Baseline = true)]
         public void List()
         {
             foreach (var i in list)
+            {
+                GC.KeepAlive(i);
+            }
+        }
+
+        [Benchmark]
+        public void IList()
+        {
+            foreach (var i in ilist)
             {
                 GC.KeepAlive(i);
             }
