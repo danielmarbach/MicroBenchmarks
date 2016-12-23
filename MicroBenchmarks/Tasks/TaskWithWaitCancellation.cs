@@ -107,7 +107,15 @@ namespace MicroBenchmarks.Tasks
         {
             using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10)))
             {
-                return await Failure().WithWaitCancellationLinkedTokenSource(cts.Token).ConfigureAwait(false);
+                try
+                {
+                    return await Failure().WithWaitCancellationLinkedTokenSource(cts.Token).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // ignored
+                    return 42;
+                }
             }
         }
 
@@ -116,7 +124,15 @@ namespace MicroBenchmarks.Tasks
         {
             using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10)))
             {
-                return await Failure().WithWaitCancellationTaskCompletionSource(cts.Token).ConfigureAwait(false);
+                try
+                {
+                    return await Failure().WithWaitCancellationTaskCompletionSource(cts.Token).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // ignored
+                    return 42;
+                }
             }
         }
 
