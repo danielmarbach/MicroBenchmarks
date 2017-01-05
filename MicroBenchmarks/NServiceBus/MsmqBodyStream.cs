@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnostics.Windows;
+using BenchmarkDotNet.Engines;
+using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 
@@ -23,9 +25,9 @@ namespace MicroBenchmarks.NServiceBus
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new MemoryDiagnoser());
-                Add(Job.Default.With(Mode.SingleRun).With(Platform.X64).WithLaunchCount(1).WithWarmupCount(1).WithTargetCount(1));
-                Add(Job.Default.With(Mode.SingleRun).With(Platform.X86).WithLaunchCount(1).WithWarmupCount(1).WithTargetCount(1));
+                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
+                Add(Job.Default.With(RunStrategy.ColdStart).With(Platform.X64).WithLaunchCount(1).WithWarmupCount(1).WithTargetCount(1));
+                Add(Job.Default.With(RunStrategy.ColdStart).With(Platform.X86).WithLaunchCount(1).WithWarmupCount(1).WithTargetCount(1));
             }
         }
 

@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Exporters;
 
 namespace MicroBenchmarks.Linq
@@ -21,7 +18,7 @@ namespace MicroBenchmarks.Linq
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new MemoryDiagnoser());
+                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
                 Add(StatisticColumn.AllStatistics);
             }
         }

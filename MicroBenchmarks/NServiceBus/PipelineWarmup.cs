@@ -14,9 +14,9 @@ namespace MicroBenchmarks.NServiceBus
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new MemoryDiagnoser());
+                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
                 Add(Job.Default);
-                Add(Job.Default.With(new GarbageCollection { Server = true }));
+                Add(Job.Default.With(new GcMode { Server = true }));
             }
         }
 

@@ -5,6 +5,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnostics.Windows;
+using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 
@@ -18,9 +19,9 @@ namespace MicroBenchmarks.Tasks
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new MemoryDiagnoser());
-                Add(new Job { Platform = Platform.X86 }.WithTargetCount(100));
-                Add(new Job { Platform = Platform.X64 }.WithTargetCount(100));
+                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
+                Add(Job.Default.With(Platform.X64).WithTargetCount(100));
+                Add(Job.Default.With(Platform.X86).WithTargetCount(100));
             }
         }
 
@@ -57,9 +58,9 @@ namespace MicroBenchmarks.Tasks
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new MemoryDiagnoser());
-                Add(new Job { Platform = Platform.X86 }.WithTargetCount(100));
-                Add(new Job { Platform = Platform.X64 }.WithTargetCount(100));
+                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
+                Add(Job.Default.With(Platform.X64).WithTargetCount(100));
+                Add(Job.Default.With(Platform.X86).WithTargetCount(100));
             }
         }
 
@@ -96,9 +97,9 @@ namespace MicroBenchmarks.Tasks
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new MemoryDiagnoser());
-                Add(new Job { Platform = Platform.X86 }.WithTargetCount(100));
-                Add(new Job { Platform = Platform.X64 }.WithTargetCount(100));
+                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
+                Add(Job.Default.With(Platform.X64).WithTargetCount(100));
+                Add(Job.Default.With(Platform.X86).WithTargetCount(100));
             }
         }
 
