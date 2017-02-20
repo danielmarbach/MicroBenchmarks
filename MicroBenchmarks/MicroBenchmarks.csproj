@@ -206,6 +206,7 @@
     <Compile Include="NServiceBus\PipelineException.cs" />
     <Compile Include="NServiceBus\PipelineExecution.cs" />
     <Compile Include="NServiceBus\PipelineWarmup.cs" />
+    <Compile Include="NServiceBus\UnicastPublishRouter.cs" />
     <Compile Include="Tasks\AwaitCastSimulator.cs" />
     <Compile Include="Tasks\BatchedVsImmediateSimulated.cs" />
     <Compile Include="Tasks\ConcurrencyLimitting.cs" />
