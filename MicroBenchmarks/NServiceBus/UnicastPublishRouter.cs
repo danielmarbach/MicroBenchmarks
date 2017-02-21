@@ -68,9 +68,9 @@ namespace MicroBenchmarks.NServiceBus
             return RouteNew(scenarios[Scenario]);
         }
 
-        IEnumerable<UnicastRoutingStrategy> RouteOld(IEnumerable<Subscriber> subscribers)
+        List<UnicastRoutingStrategy> RouteOld(IEnumerable<Subscriber> subscribers)
         {
-            return SelectDestinationsForEachEndpointOld(subscribers).Select(s => new UnicastRoutingStrategy(s));
+            return SelectDestinationsForEachEndpointOld(subscribers).Select(s => new UnicastRoutingStrategy(s)).ToList(); // need to materialize here to be fair
         }
 
         HashSet<string> SelectDestinationsForEachEndpointOld(IEnumerable<Subscriber> subscribers)
@@ -101,7 +101,7 @@ namespace MicroBenchmarks.NServiceBus
             return addresses;
         }
 
-        IEnumerable<UnicastRoutingStrategy> RouteNew(IEnumerable<Subscriber> subscribers)
+        Dictionary<string, UnicastRoutingStrategy>.ValueCollection RouteNew(IEnumerable<Subscriber> subscribers)
         {
             return SelectDestinationsForEachEndpointNew(subscribers);
         }
