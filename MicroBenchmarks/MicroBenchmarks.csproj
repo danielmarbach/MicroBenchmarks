@@ -197,6 +197,7 @@
     <Compile Include="Linq\LinqSelect.cs" />
     <Compile Include="Linq\LinqWhere.cs" />
     <Compile Include="LowLevel\GenericOrCast.cs" />
+    <Compile Include="NServiceBus\ASBLifecycleManager.cs" />
     <Compile Include="NServiceBus\ASQQeueNameGenerator.cs" />
     <Compile Include="NServiceBus\MessageHandlerRegistry.cs" />
     <Compile Include="NServiceBus\MessageHandlerRegistryPerf.cs" />
