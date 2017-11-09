@@ -22,6 +22,7 @@ namespace MicroBenchmarks.NServiceBus
 
         private PipelineModifications pipelineModificationsBeforeOptimizations;
         private PipelineModifications pipelineModificationsAfterOptimizations;
+        private PipelineModifications pipelineModificationsAfterOptimizationsFastExpressionCompiler;
 
         [Params(10, 20, 40)]
         public int PipelineDepth { get; set; }
@@ -40,6 +41,12 @@ namespace MicroBenchmarks.NServiceBus
             {
                 pipelineModificationsAfterOptimizations.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
             }
+
+            pipelineModificationsAfterOptimizationsFastExpressionCompiler = new PipelineModifications();
+            for (int i = 0; i < PipelineDepth; i++)
+            {
+                pipelineModificationsAfterOptimizationsFastExpressionCompiler.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
+            }
         }
 
         [Benchmark(Baseline = true)]
@@ -55,6 +62,14 @@ namespace MicroBenchmarks.NServiceBus
         {
             var pipeline = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModificationsAfterOptimizations);
+            return pipeline;
+        }
+
+        [Benchmark]
+        public PipelineFastExpressionCompiler<IBehaviorContext> V6_PipelineAfterOptimizationsFastExpressionCompiler()
+        {
+            var pipeline = new PipelineFastExpressionCompiler<IBehaviorContext>(null, new SettingsHolder(),
+                pipelineModificationsAfterOptimizationsFastExpressionCompiler);
             return pipeline;
         }
     }

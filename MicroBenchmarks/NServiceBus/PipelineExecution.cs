@@ -33,6 +33,7 @@ namespace MicroBenchmarks.NServiceBus
         private PipelineModifications pipelineModificationsAfterOptimizations;
         private PipelineBeforeOptimization<IBehaviorContext> pipelineBeforeOptimizations;
         private PipelineAfterOptimizations<IBehaviorContext> pipelineAfterOptimizations;
+        private PipelineFastExpressionCompiler<IBehaviorContext> pipelineAfterOptimizationsFastExpressionCompiler;
 
         [Setup]
         public void SetUp()
@@ -57,10 +58,13 @@ namespace MicroBenchmarks.NServiceBus
                 pipelineModificationsBeforeOptimizations);
             pipelineAfterOptimizations = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModificationsAfterOptimizations);
+            pipelineAfterOptimizationsFastExpressionCompiler = new PipelineFastExpressionCompiler<IBehaviorContext>(null, new SettingsHolder(),
+                pipelineModificationsAfterOptimizations);
 
             // warmup and cache
             pipelineBeforeOptimizations.Invoke(behaviorContext).GetAwaiter().GetResult();
             pipelineAfterOptimizations.Invoke(behaviorContext).GetAwaiter().GetResult();
+            pipelineAfterOptimizationsFastExpressionCompiler.Invoke(behaviorContext).GetAwaiter().GetResult();
         }
 
         [Benchmark(Baseline = true)]
@@ -78,6 +82,15 @@ namespace MicroBenchmarks.NServiceBus
             for (int i = 0; i < Calls; i++)
             {
                 await pipelineAfterOptimizations.Invoke(behaviorContext).ConfigureAwait(false);
+            }
+        }
+
+        [Benchmark]
+        public async Task V6_PipelineAfterOptimizationsFastExpressionCompiler()
+        {
+            for (int i = 0; i < Calls; i++)
+            {
+                await pipelineAfterOptimizationsFastExpressionCompiler.Invoke(behaviorContext).ConfigureAwait(false);
             }
         }
 
