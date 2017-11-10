@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Exporters;
 
 namespace MicroBenchmarks.Linq

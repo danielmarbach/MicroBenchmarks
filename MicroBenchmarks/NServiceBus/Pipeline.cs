@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
@@ -553,7 +552,7 @@ namespace MicroBenchmarks.NServiceBus
         {
             if (locked)
             {
-                throw new ConfigurationErrorsException(
+                throw new Exception(
                     "Unable to merge settings. The settings has been locked for modifications. Move any configuration code earlier in the configuration pipeline");
             }
         }
@@ -562,7 +561,7 @@ namespace MicroBenchmarks.NServiceBus
         {
             if (locked)
             {
-                throw new ConfigurationErrorsException(
+                throw new Exception(
                     $"Unable to set the value for key: {key}. The settings has been locked for modifications. Move any configuration code earlier in the configuration pipeline");
             }
         }

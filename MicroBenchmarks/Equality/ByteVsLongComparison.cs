@@ -5,7 +5,6 @@ using System.Linq;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 
@@ -28,7 +27,7 @@ namespace MicroBenchmarks.Linq
         [Params(8)]
         public int Elements { get; set; }
 
-        [Setup]
+        [GlobalSetup]
         public void SetUp()
         {
             array = predefinedArray = new byte[Elements];

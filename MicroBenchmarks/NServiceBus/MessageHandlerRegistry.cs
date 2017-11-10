@@ -3,10 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Management.Instrumentation;
-using System.Runtime.Remoting.Messaging;
 using System.Threading.Tasks;
-using System.Windows.Input;
 
 namespace MicroBenchmarks.NServiceBus
 {
@@ -778,5 +775,9 @@ namespace MicroBenchmarks.NServiceBus
         static byte[] nsbPublicKeyToken = typeof(TypeExtensionMethods).Assembly.GetName().GetPublicKeyToken();
     }
 
+    interface ICommand { };
 
+    interface IEvent { };
+
+    interface IMessage { };
 }

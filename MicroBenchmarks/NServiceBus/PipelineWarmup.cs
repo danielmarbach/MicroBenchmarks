@@ -1,6 +1,5 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 
@@ -27,7 +26,7 @@ namespace MicroBenchmarks.NServiceBus
         [Params(10, 20, 40)]
         public int PipelineDepth { get; set; }
 
-        [Setup]
+        [GlobalSetup]
         public void SetUp()
         {
             pipelineModificationsBeforeOptimizations = new PipelineModifications();

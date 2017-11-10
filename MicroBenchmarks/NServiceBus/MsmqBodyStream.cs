@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if !NETCOREAPP2_0
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Messaging;
@@ -7,7 +8,6 @@ using System.Reflection.Emit;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Engines;
 using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Exporters;
@@ -37,7 +37,7 @@ namespace MicroBenchmarks.NServiceBus
         [Params(1000, 10000, 20000)]
         public int NumberOfMessages { get; set; }
 
-        [Setup]
+        [GlobalSetup]
         public void SetUp()
         {
             var random = new Random();
@@ -138,3 +138,4 @@ namespace MicroBenchmarks.NServiceBus
         }
     }
 }
+#endif
