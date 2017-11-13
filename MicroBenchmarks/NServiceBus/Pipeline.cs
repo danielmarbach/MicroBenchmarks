@@ -286,7 +286,7 @@ namespace MicroBenchmarks.NServiceBus
         ///          context{N} => behavior{N}.Invoke(context{N},
         ///             context{N+1} => TaskEx.Completed))
         /// </code>
-        public static Delegate CreateFastPipelineExecutionExpression(this IBehavior[] behaviors, List<Expression> expressions = null)
+        public static Delegate CreateFastPipelineExecutionExpression(this IBehavior[] behaviors, List<ExpressionInfo> expressions = null)
         {
             Delegate lambdaExpression = null;
             var length = behaviors.Length - 1;
@@ -308,7 +308,7 @@ namespace MicroBenchmarks.NServiceBus
                 var genericArguments = behaviorInterfaceType.GetGenericArguments();
                 var inContextType = genericArguments[0];
 
-                var inContextParameter = Expression.Parameter(inContextType, $"context{i}");
+                var inContextParameter = ExpressionInfo.Parameter(inContextType, $"context{i}");
 
                 if (i == length)
                 {
@@ -332,12 +332,12 @@ namespace MicroBenchmarks.NServiceBus
         /// <code>
         /// context{i} => behavior.Invoke(context{i}, context{i+1} => previous)
         /// </code>>
-        static Delegate CreateBehaviorCallDelegate(IBehavior currentBehavior, MethodInfo methodInfo, ParameterExpression outerContextParam, Delegate previous, List<Expression> expressions = null)
+        static Delegate CreateBehaviorCallDelegate(IBehavior currentBehavior, MethodInfo methodInfo, ParameterExpression outerContextParam, Delegate previous, List<ExpressionInfo> expressions = null)
         {
-            Expression body = Expression.Call(Expression.Constant(currentBehavior), methodInfo, outerContextParam, Expression.Constant(previous));
-            var lambdaExpression = Expression.Lambda(body, outerContextParam);
+            var body = ExpressionInfo.Call(ExpressionInfo.Constant(currentBehavior), methodInfo, outerContextParam, ExpressionInfo.Constant(previous));
+            var lambdaExpression = ExpressionInfo.Lambda(body, outerContextParam);
             expressions?.Add(lambdaExpression);
-            return lambdaExpression.CompileFast(ifFastFailedReturnNull: true);
+            return lambdaExpression.CompileFast();
         }
 
         /// <code>
@@ -345,8 +345,8 @@ namespace MicroBenchmarks.NServiceBus
         /// </code>>
         static Delegate CreateDoneDelegate(Type inContextType, int i)
         {
-            var innerContextParam = Expression.Parameter(inContextType, $"context{i + 1}");
-            return Expression.Lambda(typeof(Func<,>).MakeGenericType(inContextType, typeof(Task)), Expression.Constant(TaskEx.CompletedTask), innerContextParam).CompileFast(ifFastFailedReturnNull: true);
+            var innerContextParam = ExpressionInfo.Parameter(inContextType, $"context{i + 1}");
+            return ExpressionInfo.Lambda(ExpressionInfo.Constant(TaskEx.CompletedTask), innerContextParam).CompileFast();
         }
     }
 

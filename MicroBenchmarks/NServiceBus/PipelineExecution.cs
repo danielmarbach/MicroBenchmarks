@@ -17,12 +17,12 @@ namespace MicroBenchmarks.NServiceBus
             {
                 Add(MarkdownExporter.GitHub);
                 Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
-                Add(Job.Default.With(RunStrategy.ColdStart).WithLaunchCount(1).WithWarmupCount(1).WithTargetCount(1));
-                Add(Job.Default.With(RunStrategy.ColdStart).WithLaunchCount(1).WithWarmupCount(1).WithTargetCount(1).With(new GcMode { Server = true }));
+                Add(Job.ShortRun);
+                Add(Job.ShortRun.With(new GcMode { Server = true }));
             }
         }
 
-        [Params(20000, 40000, 80000, 160000, 320000, 640000, 1280000)]
+        [Params(20000, 40000, 80000, 160000, 320000)]
         public int Calls { get; set; }
 
         [Params(10, 20, 40)]
