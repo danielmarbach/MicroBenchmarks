@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Exporters;
 
 namespace MicroBenchmarks.Tasks
@@ -28,7 +27,7 @@ namespace MicroBenchmarks.Tasks
         State state4Field;
         State state5Field;
 
-        [Setup]
+        [GlobalSetup]
         void Setup()
         {
             state1Field = new State();

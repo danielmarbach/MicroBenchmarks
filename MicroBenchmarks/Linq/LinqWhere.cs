@@ -4,7 +4,6 @@ using System.Linq;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Exporters;
 
 namespace MicroBenchmarks.Linq
@@ -26,7 +25,7 @@ namespace MicroBenchmarks.Linq
         [Params(2, 4, 8, 16, 32, 64)]
         public int Elements { get; set; }
 
-        [Setup]
+        [GlobalSetup]
         public void SetUp()
         {
             list = Enumerable.Range(0, Elements).ToList();

@@ -1,7 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Exporters;
 
 namespace MicroBenchmarks.NServiceBus
@@ -22,7 +21,7 @@ namespace MicroBenchmarks.NServiceBus
         [Params(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)]
         public int Calls { get; set; }
 
-        [Setup]
+        [GlobalSetup]
         public void SetUp()
         {
             registryBefore = SetupRegistryBeforeOptimizations();

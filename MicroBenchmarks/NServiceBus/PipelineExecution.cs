@@ -1,7 +1,6 @@
 ﻿using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Engines;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
@@ -35,7 +34,7 @@ namespace MicroBenchmarks.NServiceBus
         private PipelineAfterOptimizations<IBehaviorContext> pipelineAfterOptimizations;
         private PipelineFastExpressionCompiler<IBehaviorContext> pipelineAfterOptimizationsFastExpressionCompiler;
 
-        [Setup]
+        [GlobalSetup]
         public void SetUp()
         {
             behaviorContext = new BehaviorContext();

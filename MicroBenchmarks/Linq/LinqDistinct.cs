@@ -25,7 +25,7 @@ namespace MicroBenchmarks.Linq
         [Params(2, 4, 8, 16, 32, 64)]
         public int Elements { get; set; }
 
-        [Setup]
+        [GlobalSetup]
         public void SetUp()
         {
             list = Enumerable.Range(0, Elements).ToList();
