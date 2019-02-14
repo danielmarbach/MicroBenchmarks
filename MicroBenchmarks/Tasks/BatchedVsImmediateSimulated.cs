@@ -19,7 +19,7 @@ namespace MicroBenchmarks
             {
                 Add(MarkdownExporter.GitHub);
                 Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
-                Add(Job.Default.With(Platform.X64).WithTargetCount(1).WithWarmupCount(1));
+                Add(Job.Default.With(Platform.X64).WithIterationCount(1).WithWarmupCount(1));
             }
         }
 
