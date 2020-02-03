@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 
 namespace MicroBenchmarks.NServiceBus
@@ -19,7 +20,7 @@ namespace MicroBenchmarks.NServiceBus
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
+                Add(MemoryDiagnoser.Default);
                 Add(StatisticColumn.AllStatistics);
             }
         }

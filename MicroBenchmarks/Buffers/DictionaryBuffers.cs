@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Engines;
 using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Exporters;
@@ -20,7 +21,7 @@ namespace MicroBenchmarks.Buffers
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
+                Add(MemoryDiagnoser.Default);
                 Add(StatisticColumn.AllStatistics);
                 Add(Job.Default.With(Platform.X64).With(new GcMode()
                 {

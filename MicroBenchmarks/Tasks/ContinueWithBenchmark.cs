@@ -5,6 +5,7 @@ using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 using System;
 using System.Threading.Tasks;
+using BenchmarkDotNet.Diagnosers;
 
 namespace MicroBenchmarks.Tasks
 {
@@ -16,7 +17,7 @@ namespace MicroBenchmarks.Tasks
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
+                Add(MemoryDiagnoser.Default);
                 Add(StatisticColumn.AllStatistics);
             }
         }

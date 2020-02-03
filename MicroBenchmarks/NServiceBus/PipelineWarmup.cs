@@ -1,5 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 
@@ -13,7 +14,7 @@ namespace MicroBenchmarks.NServiceBus
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
+                Add(MemoryDiagnoser.Default);
                 Add(Job.ShortRun);
                 Add(Job.ShortRun.With(new GcMode { Server = true }));
             }

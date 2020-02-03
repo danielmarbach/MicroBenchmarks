@@ -5,6 +5,7 @@ using System.Linq;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 
 namespace MicroBenchmarks.Linq
@@ -20,7 +21,7 @@ namespace MicroBenchmarks.Linq
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
+                Add(MemoryDiagnoser.Default);
                 Add(StatisticColumn.AllStatistics);
             }
         }

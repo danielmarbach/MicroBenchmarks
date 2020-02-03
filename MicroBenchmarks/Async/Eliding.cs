@@ -16,7 +16,7 @@ namespace MicroBenchmarks.Async
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
-                Add(new BenchmarkDotNet.Diagnosers.MemoryDiagnoser());
+                Add(BenchmarkDotNet.Diagnosers.MemoryDiagnoser.Default);
                 Add(StatisticColumn.AllStatistics);
                 Add(Job.Default.With(CsProjCoreToolchain.NetCoreApp20));
             }
