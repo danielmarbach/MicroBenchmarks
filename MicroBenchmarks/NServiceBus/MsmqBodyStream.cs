@@ -1,4 +1,4 @@
-﻿#if !NETCOREAPP2_1
+﻿#if NETFRAMEWORK
 using System;
 using System.Collections.Generic;
 using System.IO;
