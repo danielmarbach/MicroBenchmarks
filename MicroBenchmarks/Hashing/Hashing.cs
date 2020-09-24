@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Data.HashFunction;
+using System.Data.HashFunction.FarmHash;
 using System.Security.Cryptography;
 using System.Text;
 using BenchmarkDotNet.Attributes;
@@ -7,6 +9,7 @@ using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Exporters.Csv;
 using FastHashes;
 
 namespace MicroBenchmarks.Hashing
@@ -19,11 +22,15 @@ namespace MicroBenchmarks.Hashing
         private static SHA1CryptoServiceProvider sha1CryptoServiceProvider;
         private static SHA1 sha1CryptoServiceProviderNg;
         private static FarmHash128 farmHash128Provider;
+        public static readonly IFarmHashFingerprint128 FarmHashFingerprint128 = FarmHashFingerprint128Factory.Instance.Create();
+
         private class Config : ManualConfig
         {
             public Config()
             {
                 Add(MarkdownExporter.GitHub);
+                Add(RPlotExporter.Default);
+                Add(CsvMeasurementsExporter.Default);
                 Add(MemoryDiagnoser.Default);
                 Add(StatisticColumn.AllStatistics);
             }
@@ -95,6 +102,15 @@ namespace MicroBenchmarks.Hashing
             }
         }
 
+        [Benchmark]
+        public void DeterministcGuidFarmHashFingerPrintReuse()
+        {
+            for (var i = 0; i < NumberOfGuids; i++)
+            {
+                DeterministicFarmHashFingerprintReuse($"{typeof(Hashing).FullName}_PropertyName_Value");
+            }
+        }
+
         static Guid DeterministicGuid(string src)
         {
             var stringBytes = Encoding.UTF8.GetBytes(src);
@@ -149,6 +165,13 @@ namespace MicroBenchmarks.Hashing
             var stringBytes = Encoding.UTF8.GetBytes(src);
 
             return new Guid(farmHash128Provider.ComputeHash(stringBytes));
+        }
+
+        static Guid DeterministicFarmHashFingerprintReuse(string src)
+        {
+            var stringBytes = Encoding.UTF8.GetBytes(src);
+
+            return new Guid(FarmHashFingerprint128.ComputeHash(stringBytes).Hash);
         }
     }
 }
