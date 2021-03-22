@@ -18,8 +18,6 @@ namespace MicroBenchmarks
             {
                 Add(MarkdownExporter.GitHub);
                 Add(MemoryDiagnoser.Default);
-                Add(Job.Default.With(Platform.X86).WithIterationCount(100));
-                Add(Job.Default.With(Platform.X64).WithIterationCount(100));
             }
         }
 

@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>netcoreapp3.1;net461</TargetFrameworks>
+      <LangVersion>8.0</LangVersion>
   </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
     <Reference Include="System.Messaging" />
@@ -10,6 +11,7 @@
     <PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
     <PackageReference Include="FastExpressionCompiler" Version="1.8.0" />
     <PackageReference Include="FastHashes" Version="1.7.5" />
+    <PackageReference Include="Microsoft.Azure.Amqp" Version="2.4.11" />
     <PackageReference Include="System.Buffers" Version="4.5.0" />
     <PackageReference Include="System.Data.HashFunction.FarmHash" Version="2.0.0" />
     <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />

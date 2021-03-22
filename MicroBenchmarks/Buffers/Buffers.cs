@@ -23,19 +23,19 @@ namespace MicroBenchmarks.Buffers
                 Add(MarkdownExporter.GitHub);
                 Add(MemoryDiagnoser.Default);
                 Add(StatisticColumn.AllStatistics);
-                Add(Job.Default.With(Platform.X64).With(new GcMode()
-                {
-                    Force = false // tell BenchmarkDotNet not to force GC collections after every iteration
-                }));
+                // Add(Job.Default.With(Platform.X64).With(new GcMode()
+                // {
+                //     Force = false // tell BenchmarkDotNet not to force GC collections after every iteration
+                // }));
             }
         }
-        
+
         [Params(1,
             2,
-            8, 
-            16, 
-            32, 
-            64)] 
+            8,
+            16,
+            32,
+            64)]
         public int Size { get; set; }
 
         private ArrayPool<Task> taskListPool;
@@ -49,9 +49,9 @@ namespace MicroBenchmarks.Buffers
         }
 
         [Benchmark(Baseline = true)]
-        public void Task_Allocate() 
+        public void Task_Allocate()
             => DeadCodeEliminationHelper.KeepAliveWithoutBoxing(new Task[Size]);
-        
+
         [Benchmark]
         public void Task_RentAndReturn_Shared()
         {
@@ -79,7 +79,7 @@ namespace MicroBenchmarks.Buffers
                     buffer.Add(new Dictionary<string, string>());
                 }
             }
-            
+
             public Dictionary<string, string> Rent()
             {
                 buffer.TryTake(out var dictionary);

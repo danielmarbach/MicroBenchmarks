@@ -23,19 +23,15 @@ namespace MicroBenchmarks.Buffers
                 Add(MarkdownExporter.GitHub);
                 Add(MemoryDiagnoser.Default);
                 Add(StatisticColumn.AllStatistics);
-                Add(Job.Default.With(Platform.X64).With(new GcMode()
-                {
-                    Force = false // tell BenchmarkDotNet not to force GC collections after every iteration
-                }));
             }
         }
-        
+
         [Params(1,
             2,
-            8, 
-            16, 
-            32, 
-            64)] 
+            8,
+            16,
+            32,
+            64)]
         public int Size { get; set; }
 
         private DeadSimpleDictionaryBuffer dictionaryBuffer;
@@ -145,7 +141,7 @@ namespace MicroBenchmarks.Buffers
                     buffer64.Add(new Dictionary<string, string>(64));
                 }
             }
-            
+
             public Dictionary<string, string> Rent(int size)
             {
                 Dictionary<string, string> dictionary = null;
@@ -186,14 +182,14 @@ namespace MicroBenchmarks.Buffers
                         {
                             dictionary = new Dictionary<string, string>(64);
                         }
-                        break;                    
+                        break;
                 }
 
                 return dictionary;
             }
 
             public void Return(Dictionary<string, string> dictionary, int size, bool clear = false)
-            {               
+            {
                 if (clear)
                 {
                     dictionary.Clear();
@@ -217,7 +213,7 @@ namespace MicroBenchmarks.Buffers
                         break;
                     case 64:
                         buffer64.Add(dictionary);
-                        break;                    
+                        break;
                 }
             }
         }

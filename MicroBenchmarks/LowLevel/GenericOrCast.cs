@@ -20,8 +20,6 @@ namespace MicroBenchmarks.LowLevel
                 Add(MarkdownExporter.GitHub);
                 Add(MemoryDiagnoser.Default);
                 Add(StatisticColumn.AllStatistics);
-                Add(Job.Default.With(Platform.X64));
-                Add(Job.Default.With(Platform.X86));
             }
         }
 

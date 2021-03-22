@@ -27,8 +27,6 @@ namespace MicroBenchmarks.NServiceBus
             {
                 Add(MarkdownExporter.GitHub);
                 Add(MemoryDiagnoser.Default);
-                Add(Job.Default.With(RunStrategy.ColdStart).With(Platform.X64).WithLaunchCount(1).WithWarmupCount(1).WithIterationCount(1));
-                Add(Job.Default.With(RunStrategy.ColdStart).With(Platform.X86).WithLaunchCount(1).WithWarmupCount(1).WithIterationCount(1));
             }
         }
 
