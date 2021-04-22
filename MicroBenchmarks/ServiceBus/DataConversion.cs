@@ -12,6 +12,7 @@
     using BenchmarkDotNet.Jobs;
     using Microsoft.Azure.Amqp;
 
+
     [Config(typeof(Config))]
     public class DataConversion
     {
