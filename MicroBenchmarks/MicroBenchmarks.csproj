@@ -1,14 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp3.1;net461</TargetFrameworks>
+    <TargetFrameworks>net5</TargetFrameworks>
       <LangVersion>8.0</LangVersion>
+      <DebugType>pdbonly</DebugType>
+      <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
     <Reference Include="System.Messaging" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.0" />
     <PackageReference Include="FastExpressionCompiler" Version="1.8.0" />
     <PackageReference Include="FastHashes" Version="1.7.5" />
     <PackageReference Include="Microsoft.Azure.Amqp" Version="2.4.11" />

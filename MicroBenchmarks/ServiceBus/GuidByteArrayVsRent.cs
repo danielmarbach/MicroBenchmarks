@@ -81,26 +81,26 @@ namespace MicroBenchmarks.ServiceBus
             }
         }
 
-        [Benchmark]
-        public void TryWriteBytes()
-        {
-            for (var i = 0; i < Elements; i++)
-            {
-                var bufferForGuid = ArrayPool<byte>.Shared.Rent(16);
-                try
-                {
-                    var guid = Guid.NewGuid();
-                    if (!guid.TryWriteBytes(bufferForGuid))
-                    {
-                        guid.ToByteArray().AsSpan().CopyTo(bufferForGuid);
-                    }
-                    consumer.Consume( new ArraySegment<byte>(bufferForGuid, 0, 16));
-                }
-                finally
-                {
-                    ArrayPool<byte>.Shared.Return(bufferForGuid);
-                }
-            }
-        }
+        // [Benchmark]
+        // public void TryWriteBytes()
+        // {
+        //     for (var i = 0; i < Elements; i++)
+        //     {
+        //         var bufferForGuid = ArrayPool<byte>.Shared.Rent(16);
+        //         try
+        //         {
+        //             var guid = Guid.NewGuid();
+        //             if (!guid.TryWriteBytes(bufferForGuid))
+        //             {
+        //                 guid.ToByteArray().AsSpan().CopyTo(bufferForGuid);
+        //             }
+        //             consumer.Consume( new ArraySegment<byte>(bufferForGuid, 0, 16));
+        //         }
+        //         finally
+        //         {
+        //             ArrayPool<byte>.Shared.Return(bufferForGuid);
+        //         }
+        //     }
+        // }
     }
 }
