@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
@@ -9,10 +7,13 @@ using BenchmarkDotNet.Exporters;
 
 namespace MicroBenchmarks.Linq
 {
+    using BenchmarkDotNet.Engines;
+
     [Config(typeof(Config))]
     public class ForeachVsFor
     {
-        private List<int> list;
+        private int[] list;
+        private Consumer consumer;
 
         private class Config : ManualConfig
         {
@@ -29,7 +30,9 @@ namespace MicroBenchmarks.Linq
         [GlobalSetup]
         public void SetUp()
         {
-            list = Enumerable.Range(0, Elements).ToList();
+            list = Enumerable.Range(0, Elements).ToArray();
+
+            consumer = new Consumer();
         }
 
         [Benchmark(Baseline = true)]
@@ -37,7 +40,7 @@ namespace MicroBenchmarks.Linq
         {
             foreach (var i in list)
             {
-                GC.KeepAlive(i);
+                consumer.Consume(i);
             }
         }
 
@@ -45,9 +48,9 @@ namespace MicroBenchmarks.Linq
         public void For()
         {
             // ReSharper disable once ForCanBeConvertedToForeach
-            for (int i = 0; i < list.Count; i++)
+            for (int i = 0; i < list.Length; i++)
             {
-                GC.KeepAlive(list[i]);
+                consumer.Consume(list[i]);
             }
         }
     }

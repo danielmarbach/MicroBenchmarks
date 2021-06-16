@@ -14,6 +14,7 @@
     {
         private FieldInfo messageTemplateBackingField;
         private Action<LogEvent,MessageTemplate> templateSetter;
+        private Action<LogEvent,MessageTemplate> delegateSetter;
 
         [GlobalSetup]
         public void Setup()
@@ -45,6 +46,14 @@
         {
             var logEvent = new LogEvent();
             messageTemplateBackingField.SetValue(logEvent, new MessageTemplate());
+            return logEvent;
+        }
+
+        [Benchmark]
+        public LogEvent CreateDelegate()
+        {
+            var logEvent = new LogEvent();
+            templateSetter(logEvent, new MessageTemplate());
             return logEvent;
         }
 
