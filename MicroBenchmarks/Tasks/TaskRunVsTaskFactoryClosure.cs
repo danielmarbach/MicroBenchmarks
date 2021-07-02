@@ -29,7 +29,7 @@ namespace MicroBenchmarks.Tasks
         {
             return Task.Factory.StartNew(state =>
             {
-                var externalState = (State)state;
+                var externalState = (State) state;
                 GC.KeepAlive(externalState);
             }, willRequireClosure, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
         }
@@ -37,12 +37,11 @@ namespace MicroBenchmarks.Tasks
         [Benchmark]
         public Task TaskRunWithClosure()
         {
-            return Task.Run(() =>
-            {
-                GC.KeepAlive(willRequireClosure);
-            });
+            return Task.Run(() => { GC.KeepAlive(willRequireClosure); });
         }
 
-        class State { }
+        class State
+        {
+        }
     }
 }
