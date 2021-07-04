@@ -31,11 +31,14 @@
         [Params(1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)]
         public int Operations { get; set; }
 
+        [Params(true, false)]
+        public bool AllowSynchronousContinuations { get; set; }
+
         [IterationSetup]
         public void IterationSetup()
         {
             tasks = new List<Task>(Operations);
-            worker = new BackgroundWorkQueue(Operations);
+            worker = new BackgroundWorkQueue(Operations, AllowSynchronousContinuations);
         }
 
         [Benchmark(Baseline = true)]
@@ -70,14 +73,14 @@
             private bool disposed;
             private static int currentItems;
 
-            public BackgroundWorkQueue(int numberOfItems)
+            public BackgroundWorkQueue(int numberOfItems, bool allowSynchronousContinuations)
             {
                 workChannel = Channel.CreateUnbounded<Work>(
                     new UnboundedChannelOptions
                     {
                         SingleReader = true,
                         SingleWriter = false,
-                        AllowSynchronousContinuations = true,
+                        AllowSynchronousContinuations = allowSynchronousContinuations,
                     });
 
                 cancellationTokenSource = new CancellationTokenSource();
