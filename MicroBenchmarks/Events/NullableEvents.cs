@@ -6,6 +6,7 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Engines;
 using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Jobs;
 using MicroBenchmarks.RabbitMQ;
 
 namespace MicroBenchmarks.Events
@@ -22,16 +23,17 @@ namespace MicroBenchmarks.Events
                 AddExporter(MarkdownExporter.GitHub);
                 AddDiagnoser(MemoryDiagnoser.Default);
                 AddColumn(StatisticColumn.AllStatistics);
+                AddJob(Job.ShortRun);
             }
         }
 
-        [Benchmark(Baseline = true)]
+        [Benchmark()]
         public void NullableEventInvoke()
         {
             NullableEvent?.Invoke(consumer, EventArgs.Empty);
         }
         
-        [Benchmark]
+        [Benchmark(Baseline = true)]
         public void NullableEvent_WithOneRegisteredDelegate_Invoke()
         {
             NullableEvent += static (sender, args) => ((Consumer)sender!).Consume(args);

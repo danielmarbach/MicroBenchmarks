@@ -28,11 +28,11 @@ namespace MicroBenchmarks.Hashing
         {
             public Config()
             {
-                Add(MarkdownExporter.GitHub);
-                Add(RPlotExporter.Default);
-                Add(CsvMeasurementsExporter.Default);
-                Add(MemoryDiagnoser.Default);
-                Add(StatisticColumn.AllStatistics);
+                AddExporter(CsvMeasurementsExporter.Default);
+                AddExporter(RPlotExporter.Default);
+                AddExporter(MarkdownExporter.GitHub);
+                AddDiagnoser(MemoryDiagnoser.Default);
+                AddColumn(StatisticColumn.AllStatistics);
             }
         }
 

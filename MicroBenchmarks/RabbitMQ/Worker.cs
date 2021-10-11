@@ -22,9 +22,9 @@ namespace MicroBenchmarks.RabbitMQ
         {
             public Config()
             {
-                Add(MarkdownExporter.GitHub);
-                Add(MemoryDiagnoser.Default);
-                Add(Job.ShortRun);
+                AddExporter(MarkdownExporter.GitHub);
+                AddDiagnoser(MemoryDiagnoser.Default);
+                AddJob(Job.ShortRun);
             }
         }
 

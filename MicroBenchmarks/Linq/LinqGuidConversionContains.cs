@@ -75,9 +75,9 @@ namespace MicroBenchmarks.Linq
         {
             public Config()
             {
-                Add(MarkdownExporter.GitHub);
-                Add(MemoryDiagnoser.Default);
-                Add(Job.MediumRun);
+                AddExporter(MarkdownExporter.GitHub);
+                AddDiagnoser(MemoryDiagnoser.Default);
+                AddJob(Job.MediumRun);
             }
         }
     }

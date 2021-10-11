@@ -16,9 +16,9 @@ namespace MicroBenchmarks.Tasks
         {
             public Config()
             {
-                Add(MarkdownExporter.GitHub);
-                Add(MemoryDiagnoser.Default);
-                Add(StatisticColumn.AllStatistics);
+                AddExporter(MarkdownExporter.GitHub);
+                AddDiagnoser(MemoryDiagnoser.Default);
+                AddColumn(StatisticColumn.AllStatistics);
             }
         }
 

@@ -19,9 +19,9 @@ namespace MicroBenchmarks.Linq
         {
             public Config()
             {
-                Add(MarkdownExporter.GitHub);
-                Add(MemoryDiagnoser.Default);
-                Add(StatisticColumn.AllStatistics);
+                AddExporter(MarkdownExporter.GitHub);
+                AddDiagnoser(MemoryDiagnoser.Default);
+                AddColumn(StatisticColumn.AllStatistics);
             }
         }
         [Params(2, 4, 8, 16, 32, 64, 128)]

@@ -22,8 +22,8 @@ namespace MicroBenchmarks.LowLevel
         {
             public Config()
             {
-                Add(MarkdownExporter.GitHub);
-                Add(MemoryDiagnoser.Default);
+                AddExporter(MarkdownExporter.GitHub);
+                AddDiagnoser(MemoryDiagnoser.Default);
             }
         }
 
