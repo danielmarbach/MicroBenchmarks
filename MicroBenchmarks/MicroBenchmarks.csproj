@@ -6,6 +6,7 @@
       <DebugType>pdbonly</DebugType>
       <DebugSymbols>true</DebugSymbols>
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+      <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
     <Reference Include="System.Messaging" />
