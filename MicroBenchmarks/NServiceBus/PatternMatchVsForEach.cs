@@ -96,20 +96,17 @@ public class PatternMatchVsForEach
         protected override bool TryExtractFromMessageCore(object message, out string? partitionKey,
             out string? containerInformation)
         {
-            var orderapproved = message as OrderApproved;
-            if (orderapproved != null)
+            if (message is OrderApproved orderapproved)
             {
                 return Invoke<OrderApproved>(orderapproved, out partitionKey, out containerInformation);
             }
-            
-            var iprovideorderid = message as IProvideOrderId;
-            if (iprovideorderid != null)
+
+            if (message is IProvideOrderId iprovideorderid)
             {
                 return Invoke<IProvideOrderId>(iprovideorderid, out partitionKey, out containerInformation);
             }
 
-            var orderdeclined = message as OrderDeclined;
-            if (orderdeclined != null)
+            if (message is OrderDeclined orderdeclined)
             {
                 return Invoke<OrderDeclined>(orderdeclined, out partitionKey, out containerInformation);
             }

@@ -3,7 +3,10 @@ using System.IO;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
+using BenchmarkDotNet.Engines;
 using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Jobs;
+using Microsoft.IO;
 using Newtonsoft.Json;
 
 namespace MicroBenchmarks.Json;
@@ -13,6 +16,8 @@ public class JsonPooling
 {
     private SomeObjectToSerialize objectToSerialize;
     private JsonSerializer serializer;
+    private static RecyclableMemoryStreamManager manager = new RecyclableMemoryStreamManager();
+    private Consumer consumer;
 
     private class Config : ManualConfig
     {
@@ -20,10 +25,11 @@ public class JsonPooling
         {
             AddExporter(MarkdownExporter.GitHub);
             AddDiagnoser(MemoryDiagnoser.Default);
+            AddJob(Job.ShortRun);
         }
     }
     
-    [Params(1, 128, 256, 512, 1024, 4096, 8192)]
+    [Params(64, 128, 256)]
     public int Size { get; set; }
 
     [GlobalSetup]
@@ -35,6 +41,7 @@ public class JsonPooling
             Bar = new string('b', Size)
         };
         serializer = JsonSerializer.CreateDefault();
+        consumer = new Consumer();
     }
 
     class SomeObjectToSerialize
@@ -44,20 +51,52 @@ public class JsonPooling
     }
 
     [Benchmark(Baseline = true)]
-    public MemoryStream Encoding()
+    public void Encoding()
     {
-        return new MemoryStream(System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(objectToSerialize)));
+        var buffer = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(objectToSerialize));
+        using var stream = new MemoryStream(buffer);
+        consumer.Consume(stream);
     }
 
     [Benchmark]
-    public MemoryStream Pooling()
+    public void EncodingWithPooling()
     {
-        var stream = new MemoryStream();
-        using var streamWriter = new StreamWriter(stream, default, bufferSize: -1, leaveOpen: true);
+        var buffer = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(objectToSerialize));
+        using var stream = manager.GetStream();
+        stream.Write(buffer);
+        consumer.Consume(stream);
+    }
+
+    [Benchmark]
+    public void StreamPooling()
+    {
+        using var stream = manager.GetStream();
+        using var streamWriter = new StreamWriter(stream, default, bufferSize: 1024, leaveOpen: true);
+        using var writer = new JsonTextWriter(streamWriter);
+        serializer.Serialize(writer, objectToSerialize);
+        consumer.Consume(stream);
+    }
+
+    [Benchmark]
+    public void JsonCharPooling()
+    {
+        using var stream = new MemoryStream();
+        using var streamWriter = new StreamWriter(stream, default, bufferSize: 1024, leaveOpen: true);
         using var writer = new JsonTextWriter(streamWriter);
         writer.ArrayPool = JsonArrayPool.Instance;
         serializer.Serialize(writer, objectToSerialize);
-        return stream;
+        consumer.Consume(stream);
+    }
+
+    [Benchmark]
+    public void StreamAndJsonCharPooling()
+    {
+        using var stream = manager.GetStream();
+        using var streamWriter = new StreamWriter(stream, default, bufferSize: 1024, leaveOpen: true);
+        using var writer = new JsonTextWriter(streamWriter);
+        writer.ArrayPool = JsonArrayPool.Instance;
+        serializer.Serialize(writer, objectToSerialize);
+        consumer.Consume(stream);
     }
     
     class JsonArrayPool : IArrayPool<char>
