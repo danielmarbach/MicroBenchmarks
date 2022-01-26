@@ -88,7 +88,7 @@ public class CombGuidImprovements
         var timeOfDay = now.TimeOfDay;
 
         // Convert to a byte array
-        Span<byte> scratchArray = stackalloc byte[sizeof(long)];
+        Span<byte> scratchArray = stackalloc byte[sizeof(long)] { 0, 0, 0, 0, 0, 0, 0, 0};
         // Reverse the bytes to match SQL Servers ordering
         if (BitConverter.IsLittleEndian)
         {
