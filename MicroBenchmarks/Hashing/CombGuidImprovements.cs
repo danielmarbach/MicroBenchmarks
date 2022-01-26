@@ -22,7 +22,8 @@ public class CombGuidImprovements
             AddExporter(RPlotExporter.Default);
             AddExporter(MarkdownExporter.GitHub);
             AddDiagnoser(MemoryDiagnoser.Default);
-            AddJob(Job.Default.WithInvocationCount(960000));
+            AddJob(Job.Default.WithRuntime(ClrRuntime.Net48).WithInvocationCount(1920000));
+            AddJob(Job.Default.WithRuntime(CoreRuntime.Core60).WithInvocationCount(1920000));
         }
     }
 
@@ -64,9 +65,11 @@ public class CombGuidImprovements
         return new Guid(guidArray);
     }
 
-    public static Guid GenerateImproved()
+    public static Guid GenerateImproved() => GenerateImproved(Guid.NewGuid(), DateTime.UtcNow);
+
+    public static Guid GenerateImproved(Guid guid, DateTime nowInput)
     {
-        var newGuid = Guid.NewGuid();
+        var newGuid = guid;
         Span<byte> guidArray = stackalloc byte[16];
 #if NETCOREAPP
         if (!newGuid.TryWriteBytes(guidArray))
@@ -78,24 +81,38 @@ public class CombGuidImprovements
             guidArray = newGuid.ToByteArray();
         }
 
-        var now = DateTime.UtcNow; // Internal use, no need for DateTimeOffset
+        var now = nowInput; // Internal use, no need for DateTimeOffset
 
         // Get the days and milliseconds which will be used to build the byte string
-        var days = new TimeSpan(now.Ticks - BaseDateTicks);
+        var days = new TimeSpan(now.Ticks - BaseDateTicksConst);
         var timeOfDay = now.TimeOfDay;
 
         // Convert to a byte array
-        // Note that SQL Server is accurate to 1/300th of a millisecond so we divide by 3.333333
-        Span<byte> daysArray = stackalloc byte[sizeof(int)];
+        Span<byte> scratchArray = stackalloc byte[sizeof(long)];
         // Reverse the bytes to match SQL Servers ordering
-        BinaryPrimitives.WriteInt32BigEndian(daysArray, days.Days);
-        Span<byte> milliSecondsArray = stackalloc byte[sizeof(long)];
-        // Reverse the bytes to match SQL Servers ordering
-        BinaryPrimitives.WriteInt64BigEndian(milliSecondsArray, (long)(timeOfDay.TotalMilliseconds / 3.333333));
+        if (BitConverter.IsLittleEndian)
+        {
+            BinaryPrimitives.WriteInt32BigEndian(scratchArray, days.Days);
+        }
+        else
+        {
+            BinaryPrimitives.WriteInt32LittleEndian(scratchArray, days.Days);
+        }
+        // Copy the bytes into the guid
+        scratchArray.Slice(2, 2).CopyTo(guidArray.Slice(10, 2));
 
-        // // Copy the bytes into the guid
-        daysArray.Slice(daysArray.Length - 2).CopyTo(guidArray.Slice(10, 2));
-        milliSecondsArray.Slice(milliSecondsArray.Length - 4).CopyTo(guidArray.Slice(12, 4));
+        // Reverse the bytes to match SQL Servers ordering
+        // Note that SQL Server is accurate to 1/300th of a millisecond so we divide by 3.333333
+        if (BitConverter.IsLittleEndian)
+        {
+            BinaryPrimitives.WriteInt64BigEndian(scratchArray, (long)(timeOfDay.TotalMilliseconds / 3.333333));
+        }
+        else
+        {
+            BinaryPrimitives.WriteInt64LittleEndian(scratchArray, (long)(timeOfDay.TotalMilliseconds / 3.333333));
+        }
+        // Copy the bytes into the guid
+        scratchArray.Slice(3, 4).CopyTo(guidArray.Slice(12, 4));
 
 #if NETCOREAPP
         return new Guid(guidArray);
@@ -110,4 +127,6 @@ public class CombGuidImprovements
     }
 
     static readonly long BaseDateTicks = new DateTime(1900, 1, 1).Ticks;
+
+    private const long BaseDateTicksConst = 599266080000000000;
 }
