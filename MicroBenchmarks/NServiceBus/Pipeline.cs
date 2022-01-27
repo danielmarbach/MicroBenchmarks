@@ -1,37 +1,138 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 using FastExpressionCompiler;
-using MicroBenchmarks.NServiceBus;
-using NServiceBus.Pipeline;
 
 namespace NServiceBus.Pipeline
 {
-        public interface IBehavior<in TInContext, out TOutContext> : IBehavior
-            where TInContext : IBehaviorContext
-            where TOutContext : IBehaviorContext
-        {
-            Task Invoke(TInContext context, Func<TOutContext, Task> next);
-        }
+    public interface IBehavior<in TInContext, out TOutContext> : IBehavior
+        where TInContext : IBehaviorContext
+        where TOutContext : IBehaviorContext
+    {
+        Task Invoke(TInContext context, Func<TOutContext, Task> next);
+    }
 
-        public interface IBehavior
-        {
-        }
-
-}
-
-namespace MicroBenchmarks.NServiceBus
-{
-    public interface IBehaviorContext
+    public interface IBehavior
     {
     }
 
+    public class ContextBag
+    {
+        public ContextBag(ContextBag parentBag = null)
+        {
+            this.parentBag = parentBag;
+        }
 
+        public T Get<T>()
+        {
+            return Get<T>(typeof(T).FullName);
+        }
+
+        public bool TryGet<T>(out T result)
+        {
+            return TryGet(typeof(T).FullName, out result);
+        }
+
+        public bool TryGet<T>(string key, out T result)
+        {
+            if (stash.TryGetValue(key, out var value))
+            {
+                result = (T)value;
+                return true;
+            }
+
+            if (parentBag != null)
+            {
+                return parentBag.TryGet(key, out result);
+            }
+
+            result = default;
+            return false;
+        }
+
+        public T Get<T>(string key)
+        {
+            if (!TryGet(key, out T result))
+            {
+                throw new KeyNotFoundException("No item found in behavior context with key: " + key);
+            }
+
+            return result;
+        }
+
+        public T GetOrCreate<T>() where T : class, new()
+        {
+            if (TryGet(out T value))
+            {
+                return value;
+            }
+
+            var newInstance = new T();
+
+            Set(newInstance);
+
+            return newInstance;
+        }
+
+        public void Set<T>(T t)
+        {
+            Set(typeof(T).FullName, t);
+        }
+
+
+        public void Remove<T>()
+        {
+            Remove(typeof(T).FullName);
+        }
+
+        public void Remove(string key)
+        {
+            stash.Remove(key);
+        }
+
+        public void Set<T>(string key, T t)
+        {
+            stash[key] = t;
+        }
+
+        internal void Merge(ContextBag context)
+        {
+            foreach (var kvp in context.stash)
+            {
+                stash[kvp.Key] = kvp.Value;
+            }
+        }
+        
+        internal IBehavior[] Behaviors
+        {
+            get => behaviors ?? parentBag?.Behaviors;
+            set => behaviors = value;
+        }
+
+        ContextBag parentBag;
+
+        Dictionary<string, object> stash = new Dictionary<string, object>();
+        IBehavior[] behaviors;
+    }
+    
+    public interface IExtendable
+    {
+        /// <summary>
+        /// A <see cref="ContextBag" /> which can be used to extend the current object.
+        /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        ContextBag Extensions { get; }
+    }
+    
+    public interface IBehaviorContext : IExtendable
+    {
+    }
 
     public abstract class Behavior<TContext> : IBehavior<TContext, TContext> where TContext : IBehaviorContext
     {
@@ -84,23 +185,24 @@ namespace MicroBenchmarks.NServiceBus
             behaviors = coordinator.BuildPipelineModelFor<TContext>()
                 .Select(r => r.CreateBehaviorNew(builder)).ToArray();
 
-            pipeline = behaviors.CreatePipelineExecutionFuncFor<TContext>();
+            pipeline = behaviors.CreateSmugglingPipelineExecutionFuncFor<TContext>();
         }
 
         public Task Invoke(TContext context)
         {
+            context.Extensions.Behaviors = behaviors;
             return pipeline(context);
         }
 
         // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
-        IBehavior[] behaviors;
+        public IBehavior[] behaviors;
         Func<TContext, Task> pipeline;
     }
 
-    public class PipelineFastExpressionCompiler<TContext>
+    public class PipelineBeforeOptimizations<TContext>
         where TContext : IBehaviorContext
     {
-        public PipelineFastExpressionCompiler(IBuilder builder, ReadOnlySettings settings,
+        public PipelineBeforeOptimizations(IBuilder builder, ReadOnlySettings settings,
             PipelineModifications pipelineModifications)
         {
             var coordinator = new StepRegistrationsCoordinator(pipelineModifications.Removals,
@@ -128,72 +230,13 @@ namespace MicroBenchmarks.NServiceBus
         Func<TContext, Task> pipeline;
     }
 
-    public class PipelineBeforeOptimization<TContext>
-        where TContext : IBehaviorContext
-    {
-        public PipelineBeforeOptimization(IBuilder builder, ReadOnlySettings settings,
-            PipelineModifications pipelineModifications)
-        {
-            var coordinator = new StepRegistrationsCoordinator(pipelineModifications.Removals,
-                pipelineModifications.Replacements);
-
-            foreach (var rego in pipelineModifications.Additions.Where(x => x.IsEnabled(settings)))
-            {
-                coordinator.Register(rego);
-            }
-
-            behaviors = coordinator.BuildPipelineModelFor<TContext>()
-                .Select(r => r.CreateBehaviorOld(builder)).ToArray();
-        }
-
-        public Task Invoke(TContext context)
-        {
-            var pipeline = new BehaviorChain(behaviors);
-            return pipeline.Invoke(context);
-        }
-
-        BehaviorInstance[] behaviors;
-    }
-
-    class BehaviorChain
-    {
-        public BehaviorChain(IEnumerable<BehaviorInstance> behaviorList)
-        {
-            itemDescriptors = behaviorList.ToArray();
-        }
-
-        public void Dispose()
-        {
-        }
-
-        public Task Invoke(IBehaviorContext context)
-        {
-
-            return InvokeNext(context, 0);
-        }
-
-        Task InvokeNext(IBehaviorContext context, int currentIndex)
-        {
-            if (currentIndex == itemDescriptors.Length)
-            {
-                return TaskEx.CompletedTask;
-            }
-
-            var behavior = itemDescriptors[currentIndex];
-
-            return behavior.Invoke(context, newContext => InvokeNext(newContext, currentIndex + 1));
-        }
-
-        BehaviorInstance[] itemDescriptors;
-    }
-
-    static class BehaviorExtensions
+    static class BehaviorExtensionsFastExpressionCompiler
     {
         // ReSharper disable once SuggestBaseTypeForParameter
-        public static Func<TRootContext, Task> CreatePipelineExecutionFuncFor<TRootContext>(this IBehavior[] behaviors)
+        public static Func<TRootContext, Task> CreateFastPipelineExecutionFuncFor<TRootContext>(this IBehavior[] behaviors)
             where TRootContext : IBehaviorContext
         {
-            return (Func<TRootContext, Task>)behaviors.CreatePipelineExecutionExpression();
+            return (Func<TRootContext, Task>)behaviors.CreateFastPipelineExecutionExpression();
         }
 
         /// <code>
@@ -204,7 +247,7 @@ namespace MicroBenchmarks.NServiceBus
         ///          context{N} => behavior{N}.Invoke(context{N},
         ///             context{N+1} => TaskEx.Completed))
         /// </code>
-        public static Delegate CreatePipelineExecutionExpression(this IBehavior[] behaviors, List<Expression> expressions = null)
+        public static Delegate CreateFastPipelineExecutionExpression(this IBehavior[] behaviors, List<Expression> expressions = null)
         {
             Delegate lambdaExpression = null;
             var length = behaviors.Length - 1;
@@ -252,10 +295,10 @@ namespace MicroBenchmarks.NServiceBus
         /// </code>>
         static Delegate CreateBehaviorCallDelegate(IBehavior currentBehavior, MethodInfo methodInfo, ParameterExpression outerContextParam, Delegate previous, List<Expression> expressions = null)
         {
-            Expression body = Expression.Call(Expression.Constant(currentBehavior), methodInfo, outerContextParam, Expression.Constant(previous));
+            var body = Expression.Call(Expression.Constant(currentBehavior), methodInfo, outerContextParam, Expression.Constant(previous));
             var lambdaExpression = Expression.Lambda(body, outerContextParam);
             expressions?.Add(lambdaExpression);
-            return lambdaExpression.Compile();
+            return lambdaExpression.CompileFast();
         }
 
         /// <code>
@@ -264,17 +307,17 @@ namespace MicroBenchmarks.NServiceBus
         static Delegate CreateDoneDelegate(Type inContextType, int i)
         {
             var innerContextParam = Expression.Parameter(inContextType, $"context{i + 1}");
-            return Expression.Lambda(typeof(Func<,>).MakeGenericType(inContextType, typeof(Task)), Expression.Constant(TaskEx.CompletedTask), innerContextParam).Compile();
+            return Expression.Lambda(Expression.Constant(Task.CompletedTask), innerContextParam).CompileFast();
         }
     }
-
-    static class BehaviorExtensionsFastExpressionCompiler
+    
+    static class BehaviorExtensionsFastExpressionCompilerAndBehaviorSmuggling
     {
         // ReSharper disable once SuggestBaseTypeForParameter
-        public static Func<TRootContext, Task> CreateFastPipelineExecutionFuncFor<TRootContext>(this IBehavior[] behaviors)
+        public static Func<TRootContext, Task> CreateSmugglingPipelineExecutionFuncFor<TRootContext>(this IBehavior[] behaviors)
             where TRootContext : IBehaviorContext
         {
-            return (Func<TRootContext, Task>)behaviors.CreateFastPipelineExecutionExpression();
+            return (Func<TRootContext, Task>)behaviors.CreateSmugglingPipelineExecutionExpression();
         }
 
         /// <code>
@@ -285,7 +328,7 @@ namespace MicroBenchmarks.NServiceBus
         ///          context{N} => behavior{N}.Invoke(context{N},
         ///             context{N+1} => TaskEx.Completed))
         /// </code>
-        public static Delegate CreateFastPipelineExecutionExpression(this IBehavior[] behaviors, List<ExpressionInfo> expressions = null)
+        public static Delegate CreateSmugglingPipelineExecutionExpression(this IBehavior[] behaviors, List<Expression> expressions = null)
         {
             Delegate lambdaExpression = null;
             var length = behaviors.Length - 1;
@@ -306,8 +349,8 @@ namespace MicroBenchmarks.NServiceBus
 
                 var genericArguments = behaviorInterfaceType.GetGenericArguments();
                 var inContextType = genericArguments[0];
-
-                var inContextParameter = ExpressionInfo.Parameter(inContextType, $"context{i}");
+                
+                var inContextParameter = Expression.Parameter(inContextType, $"context{i}");
 
                 if (i == length)
                 {
@@ -316,25 +359,29 @@ namespace MicroBenchmarks.NServiceBus
                         inContextType = typeof(PipelineTerminator<>.ITerminatingContext).MakeGenericType(inContextType);
                     }
                     var doneDelegate = CreateDoneDelegate(inContextType, i);
-                    lambdaExpression = CreateBehaviorCallDelegate(currentBehavior, methodInfo, inContextParameter, doneDelegate, expressions);
+                    lambdaExpression = CreateBehaviorCallDelegate(methodInfo, inContextParameter, currentBehavior.GetType(), doneDelegate, i, expressions);
                     continue;
                 }
 
-                lambdaExpression = CreateBehaviorCallDelegate(currentBehavior, methodInfo, inContextParameter, lambdaExpression, expressions);
+                lambdaExpression = CreateBehaviorCallDelegate(methodInfo, inContextParameter, currentBehavior.GetType(), lambdaExpression, i, expressions);
             }
 
             return lambdaExpression;
         }
 
-        // ReSharper disable once SuggestBaseTypeForParameter
-
         /// <code>
         /// context{i} => behavior.Invoke(context{i}, context{i+1} => previous)
         /// </code>>
-        static Delegate CreateBehaviorCallDelegate(IBehavior currentBehavior, MethodInfo methodInfo, ParameterExpression outerContextParam, Delegate previous, List<ExpressionInfo> expressions = null)
+        static Delegate CreateBehaviorCallDelegate(MethodInfo methodInfo, ParameterExpression outerContextParam, Type behaviorType, Delegate previous, int i, List<Expression> expressions = null)
         {
-            var body = ExpressionInfo.Call(ExpressionInfo.Constant(currentBehavior), methodInfo, outerContextParam, ExpressionInfo.Constant(previous));
-            var lambdaExpression = ExpressionInfo.Lambda(body, outerContextParam);
+            PropertyInfo extensionProperty = typeof(IExtendable).GetProperty("Extensions");
+            Expression extensionPropertyExpression = Expression.Property(outerContextParam, extensionProperty);
+            PropertyInfo behaviorsProperty = typeof(ContextBag).GetProperty("Behaviors", BindingFlags.Instance | BindingFlags.NonPublic);
+            Expression behaviorsPropertyExpression = Expression.Property(extensionPropertyExpression, behaviorsProperty);
+            Expression indexerPropertyExpression = Expression.ArrayIndex(behaviorsPropertyExpression, Expression.Constant(i));
+            Expression castToBehavior = Expression.Convert(indexerPropertyExpression, behaviorType);
+            Expression body = Expression.Call(castToBehavior, methodInfo, outerContextParam, Expression.Constant(previous));
+            var lambdaExpression = Expression.Lambda(body, outerContextParam);
             expressions?.Add(lambdaExpression);
             return lambdaExpression.CompileFast();
         }
@@ -344,16 +391,9 @@ namespace MicroBenchmarks.NServiceBus
         /// </code>>
         static Delegate CreateDoneDelegate(Type inContextType, int i)
         {
-            var innerContextParam = ExpressionInfo.Parameter(inContextType, $"context{i + 1}");
-            return ExpressionInfo.Lambda(ExpressionInfo.Constant(TaskEx.CompletedTask), innerContextParam).CompileFast();
+            var innerContextParam = Expression.Parameter(inContextType, $"context{i + 1}");
+            return Expression.Lambda(Expression.Constant(Task.CompletedTask), innerContextParam).CompileFast();
         }
-    }
-
-    static class TaskEx
-    {
-
-        //TODO: remove when we update to 4.6 and can use Task.CompletedTask
-        public static readonly Task CompletedTask = Task.FromResult(0);
     }
 
     public abstract class StageConnector<TFromContext, TToContext> : IBehavior<TFromContext, TToContext>,

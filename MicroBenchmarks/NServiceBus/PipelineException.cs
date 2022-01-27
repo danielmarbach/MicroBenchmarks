@@ -5,6 +5,7 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
+using NServiceBus.Pipeline;
 
 namespace MicroBenchmarks.NServiceBus
 {
@@ -25,10 +26,8 @@ namespace MicroBenchmarks.NServiceBus
         private BehaviorContext behaviorContext;
         private PipelineModifications pipelineModificationsBeforeOptimizations;
         private PipelineModifications pipelineModificationsAfterOptimizations;
-        private PipelineModifications pipelineModificationsAfterOptimizationsFastExpressionCompiler;
-        private PipelineBeforeOptimization<IBehaviorContext> pipelineBeforeOptimizations;
         private PipelineAfterOptimizations<IBehaviorContext> pipelineAfterOptimizations;
-        private PipelineFastExpressionCompiler<IBehaviorContext> pipelineAfterOptimizationsFastExpressionCompiler;
+        private PipelineBeforeOptimizations<IBehaviorContext> pipelineBeforeOptimizations;
 
         [Params(10, 20, 40)]
         public int PipelineDepth { get; set; }
@@ -54,20 +53,10 @@ namespace MicroBenchmarks.NServiceBus
 
             pipelineModificationsAfterOptimizations.Additions.Add(RegisterStep.Create(stepdId.ToString(), typeof(Throwing), "1", b => new Throwing()));
 
-            pipelineModificationsAfterOptimizationsFastExpressionCompiler = new PipelineModifications();
-            for (int i = 0; i < PipelineDepth; i++)
-            {
-                pipelineModificationsAfterOptimizationsFastExpressionCompiler.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
-            }
-
-            pipelineModificationsAfterOptimizationsFastExpressionCompiler.Additions.Add(RegisterStep.Create(stepdId.ToString(), typeof(Throwing), "1", b => new Throwing()));
-
-            pipelineBeforeOptimizations = new PipelineBeforeOptimization<IBehaviorContext>(null, new SettingsHolder(),
+            pipelineBeforeOptimizations = new PipelineBeforeOptimizations<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModificationsBeforeOptimizations);
             pipelineAfterOptimizations = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModificationsAfterOptimizations);
-            pipelineAfterOptimizationsFastExpressionCompiler = new PipelineFastExpressionCompiler<IBehaviorContext>(null, new SettingsHolder(),
-                pipelineModificationsAfterOptimizationsFastExpressionCompiler);
 
             // warmup and cache
             try
@@ -84,17 +73,10 @@ namespace MicroBenchmarks.NServiceBus
             catch (Exception)
             {
             }
-            try
-            {
-                pipelineAfterOptimizationsFastExpressionCompiler.Invoke(behaviorContext).GetAwaiter().GetResult();
-            }
-            catch (Exception)
-            {
-            }
         }
 
         [Benchmark(Baseline = true)]
-        public async Task V6_PipelineBeforeOptimizations()
+        public async Task V8_PipelineBeforeOptimizations()
         {
             try
             {
@@ -107,23 +89,11 @@ namespace MicroBenchmarks.NServiceBus
         }
 
         [Benchmark]
-        public async Task V6_PipelineAfterOptimizations()
+        public async Task V8_PipelineAfterOptimizations()
         {
             try
             {
                 await pipelineAfterOptimizations.Invoke(behaviorContext).ConfigureAwait(false);
-            }
-            catch (InvalidOperationException)
-            {
-            }
-        }
-
-        [Benchmark]
-        public async Task V6_PipelineAfterOptimizationsFastExpressonCompiler()
-        {
-            try
-            {
-                await pipelineAfterOptimizationsFastExpressionCompiler.Invoke(behaviorContext).ConfigureAwait(false);
             }
             catch (InvalidOperationException)
             {
@@ -137,6 +107,9 @@ namespace MicroBenchmarks.NServiceBus
                 throw new InvalidOperationException();
             }
         }
-        class BehaviorContext : IBehaviorContext { }
+        class BehaviorContext : ContextBag, IBehaviorContext
+        {
+            public ContextBag Extensions => this;
+        }
     }
 }

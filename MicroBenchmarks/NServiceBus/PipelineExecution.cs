@@ -4,6 +4,7 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
+using NServiceBus.Pipeline;
 
 namespace MicroBenchmarks.NServiceBus
 {
@@ -17,11 +18,10 @@ namespace MicroBenchmarks.NServiceBus
                 Add(MarkdownExporter.GitHub);
                 Add(MemoryDiagnoser.Default);
                 Add(Job.ShortRun);
-                Add(Job.ShortRun.With(new GcMode { Server = true }));
             }
         }
 
-        [Params(20000, 40000, 80000, 160000, 320000)]
+        [Params(20000, 40000, 80000, 160000)]
         public int Calls { get; set; }
 
         [Params(10, 20, 40)]
@@ -30,9 +30,8 @@ namespace MicroBenchmarks.NServiceBus
         private BehaviorContext behaviorContext;
         private PipelineModifications pipelineModificationsBeforeOptimizations;
         private PipelineModifications pipelineModificationsAfterOptimizations;
-        private PipelineBeforeOptimization<IBehaviorContext> pipelineBeforeOptimizations;
+        private PipelineBeforeOptimizations<IBehaviorContext> pipelineBeforeOptimizations;
         private PipelineAfterOptimizations<IBehaviorContext> pipelineAfterOptimizations;
-        private PipelineFastExpressionCompiler<IBehaviorContext> pipelineAfterOptimizationsFastExpressionCompiler;
 
         [GlobalSetup]
         public void SetUp()
@@ -53,21 +52,18 @@ namespace MicroBenchmarks.NServiceBus
                     typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
             }
 
-            pipelineBeforeOptimizations = new PipelineBeforeOptimization<IBehaviorContext>(null, new SettingsHolder(),
+            pipelineBeforeOptimizations = new PipelineBeforeOptimizations<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModificationsBeforeOptimizations);
             pipelineAfterOptimizations = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModificationsAfterOptimizations);
-            pipelineAfterOptimizationsFastExpressionCompiler = new PipelineFastExpressionCompiler<IBehaviorContext>(null, new SettingsHolder(),
-                pipelineModificationsAfterOptimizations);
-
+            
             // warmup and cache
             pipelineBeforeOptimizations.Invoke(behaviorContext).GetAwaiter().GetResult();
             pipelineAfterOptimizations.Invoke(behaviorContext).GetAwaiter().GetResult();
-            pipelineAfterOptimizationsFastExpressionCompiler.Invoke(behaviorContext).GetAwaiter().GetResult();
         }
 
         [Benchmark(Baseline = true)]
-        public async Task V6_PipelineBeforeOptimizations()
+        public async Task V8_PipelineBeforeOptimizations()
         {
             for (int i = 0; i < Calls; i++)
             {
@@ -76,7 +72,7 @@ namespace MicroBenchmarks.NServiceBus
         }
 
         [Benchmark]
-        public async Task V6_PipelineAfterOptimizations()
+        public async Task V8_PipelineAfterOptimizations()
         {
             for (int i = 0; i < Calls; i++)
             {
@@ -84,15 +80,9 @@ namespace MicroBenchmarks.NServiceBus
             }
         }
 
-        [Benchmark]
-        public async Task V6_PipelineAfterOptimizationsFastExpressionCompiler()
+        class BehaviorContext : ContextBag, IBehaviorContext
         {
-            for (int i = 0; i < Calls; i++)
-            {
-                await pipelineAfterOptimizationsFastExpressionCompiler.Invoke(behaviorContext).ConfigureAwait(false);
-            }
+            public ContextBag Extensions => this;
         }
-
-        class BehaviorContext : IBehaviorContext {}
     }
 }
