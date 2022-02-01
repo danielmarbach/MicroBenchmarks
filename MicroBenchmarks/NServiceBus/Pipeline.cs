@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using FastExpressionCompiler;
 
@@ -108,11 +109,18 @@ namespace NServiceBus.Pipeline
                 stash[kvp.Key] = kvp.Value;
             }
         }
-        
+
         internal IBehavior[] Behaviors
         {
             get => behaviors ?? parentBag?.Behaviors;
             set => behaviors = value;
+
+        }
+        
+        internal TBehavior GetBehavior<TBehavior>(int index) where TBehavior : class, IBehavior
+        {
+            var localBehaviors = behaviors ?? parentBag?.Behaviors;
+            return Unsafe.As<TBehavior>(localBehaviors[index]);
         }
 
         ContextBag parentBag;
@@ -165,6 +173,38 @@ namespace NServiceBus.Pipeline
         public List<RegisterStep> Additions = new List<RegisterStep>();
         public List<RemoveStep> Removals = new List<RemoveStep>();
         public List<ReplaceStep> Replacements = new List<ReplaceStep>();
+    }
+    
+    public class PipelineAfterOptimizationsUnsafe<TContext>
+        where TContext : IBehaviorContext
+    {
+        public PipelineAfterOptimizationsUnsafe(IBuilder builder, ReadOnlySettings settings,
+            PipelineModifications pipelineModifications)
+        {
+            var coordinator = new StepRegistrationsCoordinator(pipelineModifications.Removals,
+                pipelineModifications.Replacements);
+
+            foreach (var rego in pipelineModifications.Additions.Where(x => x.IsEnabled(settings)))
+            {
+                coordinator.Register(rego);
+            }
+
+            // Important to keep a reference
+            behaviors = coordinator.BuildPipelineModelFor<TContext>()
+                .Select(r => r.CreateBehaviorNew(builder)).ToArray();
+
+            pipeline = behaviors.CreateSmugglingPipelineExecutionFuncWithUnsafeFor<TContext>();
+        }
+
+        public Task Invoke(TContext context)
+        {
+            context.Extensions.Behaviors = behaviors;
+            return pipeline(context);
+        }
+
+        // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
+        public IBehavior[] behaviors;
+        Func<TContext, Task> pipeline;
     }
 
     public class PipelineAfterOptimizations<TContext>
@@ -312,6 +352,92 @@ namespace NServiceBus.Pipeline
     }
     
     static class BehaviorExtensionsFastExpressionCompilerAndBehaviorSmuggling
+    {
+        // ReSharper disable once SuggestBaseTypeForParameter
+        public static Func<TRootContext, Task> CreateSmugglingPipelineExecutionFuncWithUnsafeFor<TRootContext>(this IBehavior[] behaviors)
+            where TRootContext : IBehaviorContext
+        {
+            return (Func<TRootContext, Task>)behaviors.CreateSmugglingPipelineExecutionExpressionWithUnsafe();
+        }
+
+        /// <code>
+        /// rootContext
+        ///    => behavior1.Invoke(rootContext,
+        ///       context1 => behavior2.Invoke(context1,
+        ///        ...
+        ///          context{N} => behavior{N}.Invoke(context{N},
+        ///             context{N+1} => TaskEx.Completed))
+        /// </code>
+        public static Delegate CreateSmugglingPipelineExecutionExpressionWithUnsafe(this IBehavior[] behaviors, List<Expression> expressions = null)
+        {
+            Delegate lambdaExpression = null;
+            var length = behaviors.Length - 1;
+            // We start from the end of the list know the lambda expressions deeper in the call stack in advance
+            for (var i = length; i >= 0; i--)
+            {
+                var currentBehavior = behaviors[i];
+                var behaviorInterfaceType = currentBehavior.GetType().GetInterfaces().FirstOrDefault(t => t.GetGenericArguments().Length == 2 && t.FullName.StartsWith("NServiceBus.Pipeline.IBehavior"));
+                if (behaviorInterfaceType == null)
+                {
+                    throw new InvalidOperationException("Behaviors must implement IBehavior<TInContext, TOutContext>");
+                }
+                var methodInfo = behaviorInterfaceType.GetMethods().FirstOrDefault();
+                if (methodInfo == null)
+                {
+                    throw new InvalidOperationException("Behaviors must implement IBehavior<TInContext, TOutContext> and provide an invocation method.");
+                }
+
+                var genericArguments = behaviorInterfaceType.GetGenericArguments();
+                var inContextType = genericArguments[0];
+                
+                var inContextParameter = Expression.Parameter(inContextType, $"context{i}");
+
+                if (i == length)
+                {
+                    if (currentBehavior is IPipelineTerminator)
+                    {
+                        inContextType = typeof(PipelineTerminator<>.ITerminatingContext).MakeGenericType(inContextType);
+                    }
+                    var doneDelegate = CreateDoneDelegate(inContextType, i);
+                    lambdaExpression = CreateBehaviorCallDelegate(methodInfo, inContextParameter, currentBehavior.GetType(), doneDelegate, i, expressions);
+                    continue;
+                }
+
+                lambdaExpression = CreateBehaviorCallDelegate(methodInfo, inContextParameter, currentBehavior.GetType(), lambdaExpression, i, expressions);
+            }
+
+            return lambdaExpression;
+        }
+
+        /// <code>
+        /// context{i} => behavior.Invoke(context{i}, context{i+1} => previous)
+        /// </code>>
+        static Delegate CreateBehaviorCallDelegate(MethodInfo methodInfo, ParameterExpression outerContextParam, Type behaviorType, Delegate previous, int i, List<Expression> expressions = null)
+        {
+            PropertyInfo extensionProperty = typeof(IExtendable).GetProperty("Extensions");
+            Expression extensionPropertyExpression = Expression.Property(outerContextParam, extensionProperty);
+            PropertyInfo behaviorsProperty = typeof(ContextBag).GetProperty("Behaviors", BindingFlags.Instance | BindingFlags.NonPublic);
+            Expression behaviorsPropertyExpression = Expression.Property(extensionPropertyExpression, behaviorsProperty);
+            Expression indexerPropertyExpression = Expression.ArrayIndex(behaviorsPropertyExpression, Expression.Constant(i));
+            MethodInfo unsafeAsMethodInfo = typeof(Unsafe).GetMethod("As", new[] { typeof(object) }).MakeGenericMethod(behaviorType);
+            Expression castToBehavior = Expression.Call(null, unsafeAsMethodInfo, indexerPropertyExpression);
+            Expression body = Expression.Call(castToBehavior, methodInfo, outerContextParam, Expression.Constant(previous));
+            var lambdaExpression = Expression.Lambda(body, outerContextParam);
+            expressions?.Add(lambdaExpression);
+            return lambdaExpression.CompileFast();
+        }
+
+        /// <code>
+        /// context{i} => return TaskEx.CompletedTask;
+        /// </code>>
+        static Delegate CreateDoneDelegate(Type inContextType, int i)
+        {
+            var innerContextParam = Expression.Parameter(inContextType, $"context{i + 1}");
+            return Expression.Lambda(Expression.Constant(Task.CompletedTask), innerContextParam).CompileFast();
+        }
+    }
+    
+     static class BehaviorExtensionsFastExpressionCompilerAndBehaviorSmugglingAndUnsafe
     {
         // ReSharper disable once SuggestBaseTypeForParameter
         public static Func<TRootContext, Task> CreateSmugglingPipelineExecutionFuncFor<TRootContext>(this IBehavior[] behaviors)

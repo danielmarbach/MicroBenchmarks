@@ -23,6 +23,7 @@ namespace MicroBenchmarks.NServiceBus
 
         private PipelineModifications pipelineModificationsBeforeOptimizations;
         private PipelineModifications pipelineModificationsAfterOptimizations;
+        private PipelineModifications pipelineModificationsAfterOptimizationsWithUnsafe;
 
         [Params(10, 20, 40)]
         public int PipelineDepth { get; set; }
@@ -41,6 +42,12 @@ namespace MicroBenchmarks.NServiceBus
             {
                 pipelineModificationsAfterOptimizations.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
             }
+            
+            pipelineModificationsAfterOptimizationsWithUnsafe = new PipelineModifications();
+            for (int i = 0; i < PipelineDepth; i++)
+            {
+                pipelineModificationsAfterOptimizationsWithUnsafe.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
+            }
         }
 
         [Benchmark(Baseline = true)]
@@ -52,10 +59,18 @@ namespace MicroBenchmarks.NServiceBus
         }
 
         [Benchmark]
-        public PipelineAfterOptimizations<IBehaviorContext> V6_PipelineAfterOptimizations()
+        public PipelineAfterOptimizations<IBehaviorContext> V8_PipelineAfterOptimizations()
         {
             var pipeline = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModificationsAfterOptimizations);
+            return pipeline;
+        }
+        
+        [Benchmark]
+        public PipelineAfterOptimizations<IBehaviorContext> V8_PipelineAfterOptimizationsWithUnsafe()
+        {
+            var pipeline = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
+                pipelineModificationsAfterOptimizationsWithUnsafe);
             return pipeline;
         }
     }

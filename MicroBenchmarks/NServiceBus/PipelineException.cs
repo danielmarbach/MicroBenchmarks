@@ -26,8 +26,10 @@ namespace MicroBenchmarks.NServiceBus
         private BehaviorContext behaviorContext;
         private PipelineModifications pipelineModificationsBeforeOptimizations;
         private PipelineModifications pipelineModificationsAfterOptimizations;
+        private PipelineModifications pipelineModificationsAfterOptimizationsWithUnsafe;
         private PipelineAfterOptimizations<IBehaviorContext> pipelineAfterOptimizations;
         private PipelineBeforeOptimizations<IBehaviorContext> pipelineBeforeOptimizations;
+        private PipelineAfterOptimizationsUnsafe<IBehaviorContext> pipelineAfterOptimizationsWithUnsafe;
 
         [Params(10, 20, 40)]
         public int PipelineDepth { get; set; }
@@ -50,13 +52,21 @@ namespace MicroBenchmarks.NServiceBus
             {
                 pipelineModificationsAfterOptimizations.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
             }
-
             pipelineModificationsAfterOptimizations.Additions.Add(RegisterStep.Create(stepdId.ToString(), typeof(Throwing), "1", b => new Throwing()));
+            
+            pipelineModificationsAfterOptimizationsWithUnsafe = new PipelineModifications();
+            for (int i = 0; i < PipelineDepth; i++)
+            {
+                pipelineModificationsAfterOptimizationsWithUnsafe.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
+            }
+            pipelineModificationsAfterOptimizationsWithUnsafe.Additions.Add(RegisterStep.Create(stepdId.ToString(), typeof(Throwing), "1", b => new Throwing()));
 
             pipelineBeforeOptimizations = new PipelineBeforeOptimizations<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModificationsBeforeOptimizations);
             pipelineAfterOptimizations = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModificationsAfterOptimizations);
+            pipelineAfterOptimizationsWithUnsafe = new PipelineAfterOptimizationsUnsafe<IBehaviorContext>(null, new SettingsHolder(),
+                pipelineModificationsAfterOptimizationsWithUnsafe);
 
             // warmup and cache
             try
@@ -69,6 +79,13 @@ namespace MicroBenchmarks.NServiceBus
             try
             {
                 pipelineAfterOptimizations.Invoke(behaviorContext).GetAwaiter().GetResult();
+            }
+            catch (Exception)
+            {
+            }
+            try
+            {
+                pipelineAfterOptimizationsWithUnsafe.Invoke(behaviorContext).GetAwaiter().GetResult();
             }
             catch (Exception)
             {
@@ -94,6 +111,18 @@ namespace MicroBenchmarks.NServiceBus
             try
             {
                 await pipelineAfterOptimizations.Invoke(behaviorContext).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+        
+        [Benchmark]
+        public async Task V8_PipelineAfterOptimizationsWithUnsafe()
+        {
+            try
+            {
+                await pipelineAfterOptimizationsWithUnsafe.Invoke(behaviorContext).ConfigureAwait(false);
             }
             catch (InvalidOperationException)
             {
