@@ -22,7 +22,7 @@ namespace MicroBenchmarks.EventHubs
             {
                 AddExporter(MarkdownExporter.GitHub);
                 AddDiagnoser(MemoryDiagnoser.Default);
-                AddJob(Job.ShortRun);
+                AddJob(Job.Default);
             }
         }
 
@@ -221,9 +221,9 @@ namespace MicroBenchmarks.EventHubs
             int index = 0, size = data.Length;
             while (size > 12)
             {
-                a += BinaryPrimitives.ReadUInt32BigEndian(data[index..]);
-                b += BinaryPrimitives.ReadUInt32BigEndian(data[(index + 4)..]);
-                c += BinaryPrimitives.ReadUInt32BigEndian(data[(index + 8)..]);
+                a += BitConverter.ToUInt32(data[index..]);
+                b += BitConverter.ToUInt32(data[(index + 4)..]);
+                c += BitConverter.ToUInt32(data[(index + 8)..]);
 
                 a -= c;
                 a ^= (c << 4) | (c >> 28);
@@ -256,9 +256,9 @@ namespace MicroBenchmarks.EventHubs
             switch (size)
             {
                 case 12:
-                    a += BinaryPrimitives.ReadUInt32BigEndian(data[index..]);
-                    b += BinaryPrimitives.ReadUInt32BigEndian(data[(index + 4)..]);
-                    c += BinaryPrimitives.ReadUInt32BigEndian(data[(index + 8)..]);
+                    a += BitConverter.ToUInt32(data[index..]);
+                    b += BitConverter.ToUInt32(data[(index + 4)..]);
+                    c += BitConverter.ToUInt32(data[(index + 8)..]);
                     break;
                 case 11:
                     c += ((uint) data[index + 10]) << 16;
@@ -270,8 +270,8 @@ namespace MicroBenchmarks.EventHubs
                     c += (uint) data[index + 8];
                     goto case 8;
                 case 8:
-                    b += BinaryPrimitives.ReadUInt32BigEndian(data[(index + 4)..]);
-                    a += BinaryPrimitives.ReadUInt32BigEndian(data[index..]);
+                    b += BitConverter.ToUInt32(data[(index + 4)..]);
+                    a += BitConverter.ToUInt32(data[index..]);
                     break;
                 case 7:
                     b += ((uint) data[index + 6]) << 16;
@@ -283,7 +283,7 @@ namespace MicroBenchmarks.EventHubs
                     b += (uint) data[index + 4];
                     goto case 4;
                 case 4:
-                    a += BinaryPrimitives.ReadUInt32BigEndian(data[index..]);
+                    a += BitConverter.ToUInt32(data[index..]);
                     break;
                 case 3:
                     a += ((uint) data[index + 2]) << 16;
