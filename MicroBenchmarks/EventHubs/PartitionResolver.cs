@@ -22,7 +22,7 @@ namespace MicroBenchmarks.EventHubs
             {
                 AddExporter(MarkdownExporter.GitHub);
                 AddDiagnoser(MemoryDiagnoser.Default);
-                AddJob(Job.Default);
+                AddJob(Job.ShortRun);
             }
         }
 
@@ -190,14 +190,17 @@ namespace MicroBenchmarks.EventHubs
                 return 0;
             }
 
+            const int MaxStackLimit = 256;
+            
             byte[] sharedBuffer = null;
             var partitionKeySpan = partitionKey.AsSpan();
-            var partitionKeyByteLength = Encoding.UTF8.GetByteCount(partitionKeySpan);
-            Span<byte> hashBuffer = partitionKeyByteLength <= 256
-                ? stackalloc byte[partitionKeyByteLength]
+            var encoding = Encoding.UTF8;
+            var partitionKeyByteLength = encoding.GetMaxByteCount(partitionKey.Length);
+            var hashBuffer = partitionKeyByteLength <= MaxStackLimit
+                ? stackalloc byte[MaxStackLimit]
                 : sharedBuffer = ArrayPool<byte>.Shared.Rent(partitionKeyByteLength);
 
-            var written = Encoding.UTF8.GetBytes(partitionKeySpan, hashBuffer);
+            var written = encoding.GetBytes(partitionKeySpan, hashBuffer);
             ComputeHash(hashBuffer[..written], seed1: 0, seed2: 0, out uint hash1, out uint hash2);
             if (sharedBuffer != null)
             {
@@ -221,9 +224,9 @@ namespace MicroBenchmarks.EventHubs
             int index = 0, size = data.Length;
             while (size > 12)
             {
-                a += BitConverter.ToUInt32(data[index..]);
-                b += BitConverter.ToUInt32(data[(index + 4)..]);
-                c += BitConverter.ToUInt32(data[(index + 8)..]);
+                a += BinaryPrimitives.ReadUInt32LittleEndian(data[index..]);
+                b += BinaryPrimitives.ReadUInt32LittleEndian(data[(index + 4)..]);
+                c += BinaryPrimitives.ReadUInt32LittleEndian(data[(index + 8)..]);
 
                 a -= c;
                 a ^= (c << 4) | (c >> 28);
@@ -256,9 +259,9 @@ namespace MicroBenchmarks.EventHubs
             switch (size)
             {
                 case 12:
-                    a += BitConverter.ToUInt32(data[index..]);
-                    b += BitConverter.ToUInt32(data[(index + 4)..]);
-                    c += BitConverter.ToUInt32(data[(index + 8)..]);
+                    a += BinaryPrimitives.ReadUInt32LittleEndian(data[index..]);
+                    b += BinaryPrimitives.ReadUInt32LittleEndian(data[(index + 4)..]);
+                    c += BinaryPrimitives.ReadUInt32LittleEndian(data[(index + 8)..]);
                     break;
                 case 11:
                     c += ((uint) data[index + 10]) << 16;
@@ -270,8 +273,8 @@ namespace MicroBenchmarks.EventHubs
                     c += (uint) data[index + 8];
                     goto case 8;
                 case 8:
-                    b += BitConverter.ToUInt32(data[(index + 4)..]);
-                    a += BitConverter.ToUInt32(data[index..]);
+                    b += BinaryPrimitives.ReadUInt32LittleEndian(data[(index + 4)..]);
+                    a += BinaryPrimitives.ReadUInt32LittleEndian(data[index..]);
                     break;
                 case 7:
                     b += ((uint) data[index + 6]) << 16;
@@ -283,7 +286,7 @@ namespace MicroBenchmarks.EventHubs
                     b += (uint) data[index + 4];
                     goto case 4;
                 case 4:
-                    a += BitConverter.ToUInt32(data[index..]);
+                    a += BinaryPrimitives.ReadUInt32LittleEndian(data[index..]);
                     break;
                 case 3:
                     a += ((uint) data[index + 2]) << 16;
