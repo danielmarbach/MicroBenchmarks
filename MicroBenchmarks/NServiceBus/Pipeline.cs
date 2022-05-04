@@ -167,6 +167,14 @@ namespace NServiceBus.Pipeline
             return next(context);
         }
     }
+    
+    sealed class Behavior1SealedOptimization : IBehavior<IBehaviorContext, IBehaviorContext>
+    {
+        public Task Invoke(IBehaviorContext context, Func<IBehaviorContext, Task> next)
+        {
+            return next(context);
+        }
+    }
 
     public class PipelineModifications
     {
