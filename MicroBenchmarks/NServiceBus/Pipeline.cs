@@ -7,6 +7,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using FastExpressionCompiler;
 
@@ -182,7 +183,39 @@ namespace NServiceBus.Pipeline
         public List<RemoveStep> Removals = new List<RemoveStep>();
         public List<ReplaceStep> Replacements = new List<ReplaceStep>();
     }
-    
+
+    public class PipelineAfterOptimizationsUnsafeAndMemoryMarshal<TContext>
+        where TContext : IBehaviorContext
+    {
+        public PipelineAfterOptimizationsUnsafeAndMemoryMarshal(IBuilder builder, ReadOnlySettings settings,
+            PipelineModifications pipelineModifications)
+        {
+            var coordinator = new StepRegistrationsCoordinator(pipelineModifications.Removals,
+                pipelineModifications.Replacements);
+
+            foreach (var rego in pipelineModifications.Additions.Where(x => x.IsEnabled(settings)))
+            {
+                coordinator.Register(rego);
+            }
+
+            // Important to keep a reference
+            behaviors = coordinator.BuildPipelineModelFor<TContext>()
+                .Select(r => r.CreateBehaviorNew(builder)).ToArray();
+
+            pipeline = behaviors.CreateSmugglingPipelineExecutionWithMemoryMarshalFuncFor<TContext>();
+        }
+
+        public Task Invoke(TContext context)
+        {
+            context.Extensions.Behaviors = behaviors;
+            return pipeline(context);
+        }
+
+        // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
+        public IBehavior[] behaviors;
+        Func<TContext, Task> pipeline;
+    }
+
     public class PipelineAfterOptimizationsUnsafe<TContext>
         where TContext : IBehaviorContext
     {
@@ -519,6 +552,85 @@ namespace NServiceBus.Pipeline
             expressions?.Add(lambdaExpression);
             return lambdaExpression.CompileFast();
         }
+
+        /// <code>
+        /// context{i} => return TaskEx.CompletedTask;
+        /// </code>>
+        static Delegate CreateDoneDelegate(Type inContextType, int i)
+        {
+            var innerContextParam = Expression.Parameter(inContextType, $"context{i + 1}");
+            return Expression.Lambda(Expression.Constant(Task.CompletedTask), innerContextParam).CompileFast();
+        }
+    }
+
+    static class BehaviorExtensionsFastExpressionCompilerAndBehaviorSmugglingAndUnsafeAndMemoryMarshal
+    {
+        // ReSharper disable once SuggestBaseTypeForParameter
+        public static Func<TRootContext, Task> CreateSmugglingPipelineExecutionWithMemoryMarshalFuncFor<TRootContext>(this IBehavior[] behaviors)
+            where TRootContext : IBehaviorContext
+        {
+            return (Func<TRootContext, Task>)behaviors.CreateSmugglingPipelineExecutionWithMemoryMarshalExpression();
+        }
+
+        public static Delegate CreateSmugglingPipelineExecutionWithMemoryMarshalExpression(this IBehavior[] behaviors, List<Expression> expressions = null)
+        {
+            Delegate lambdaExpression = null;
+            var length = behaviors.Length - 1;
+            // We start from the end of the list know the lambda expressions deeper in the call stack in advance
+            for (var i = length; i >= 0; i--)
+            {
+                var currentBehavior = behaviors[i];
+                var behaviorInterfaceType = currentBehavior.GetType().GetInterfaces().FirstOrDefault(t => t.GetGenericArguments().Length == 2 && t.FullName.StartsWith("NServiceBus.Pipeline.IBehavior"));
+                if (behaviorInterfaceType == null)
+                {
+                    throw new InvalidOperationException("Behaviors must implement IBehavior<TInContext, TOutContext>");
+                }
+                var methodInfo = behaviorInterfaceType.GetMethods().FirstOrDefault();
+                if (methodInfo == null)
+                {
+                    throw new InvalidOperationException("Behaviors must implement IBehavior<TInContext, TOutContext> and provide an invocation method.");
+                }
+
+                var genericArguments = behaviorInterfaceType.GetGenericArguments();
+                var inContextType = genericArguments[0];
+
+                var inContextParameter = Expression.Parameter(inContextType, $"context{i}");
+
+                if (i == length)
+                {
+                    if (currentBehavior is IPipelineTerminator)
+                    {
+                        inContextType = typeof(PipelineTerminator<>.ITerminatingContext).MakeGenericType(inContextType);
+                    }
+                    var doneDelegate = CreateDoneDelegate(inContextType, i);
+                    lambdaExpression = CreateBehaviorCallDelegate(methodInfo, inContextParameter, currentBehavior.GetType(), doneDelegate, i, expressions);
+                    continue;
+                }
+
+                lambdaExpression = CreateBehaviorCallDelegate(methodInfo, inContextParameter, currentBehavior.GetType(), lambdaExpression, i, expressions);
+            }
+
+            return lambdaExpression;
+        }
+
+        static Delegate CreateBehaviorCallDelegate(MethodInfo methodInfo, ParameterExpression outerContextParam, Type behaviorType, Delegate previous, int i, List<Expression> expressions = null)
+        {
+            MethodInfo getBehaviorMethodInfo = typeof(BehaviorExtensionsFastExpressionCompilerAndBehaviorSmugglingAndUnsafeAndMemoryMarshal)
+                .GetMethod(nameof(GetBehavior))!.MakeGenericMethod(outerContextParam.Type, behaviorType);
+            Expression getBehaviorCallExpression =
+                Expression.Call(null, getBehaviorMethodInfo, outerContextParam, Expression.Constant(i));
+            Expression body = Expression.Call(getBehaviorCallExpression, methodInfo, outerContextParam, Expression.Constant(previous));
+            var lambdaExpression = Expression.Lambda(body, outerContextParam);
+            expressions?.Add(lambdaExpression);
+            return lambdaExpression.CompileFast();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static TBehavior GetBehavior<TContext, TBehavior>(TContext context, int index)
+            where TContext : class, IBehaviorContext
+            where TBehavior : class, IBehavior
+            => Unsafe.As<TBehavior>(
+                Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(context.Extensions.Behaviors), index));
 
         /// <code>
         /// context{i} => return TaskEx.CompletedTask;

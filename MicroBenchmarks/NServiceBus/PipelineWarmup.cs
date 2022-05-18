@@ -22,7 +22,6 @@ namespace MicroBenchmarks.NServiceBus
         }
 
         private PipelineModifications pipelineModificationsBeforeOptimizations;
-        private PipelineModifications pipelineModificationsAfterOptimizations;
         private PipelineModifications pipelineModificationsAfterOptimizationsWithUnsafe;
 
         [Params(10, 20, 40)]
@@ -37,12 +36,6 @@ namespace MicroBenchmarks.NServiceBus
                 pipelineModificationsBeforeOptimizations.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1BeforeOptimization), i.ToString(), b => new Behavior1BeforeOptimization()));
             }
 
-            pipelineModificationsAfterOptimizations = new PipelineModifications();
-            for (int i = 0; i < PipelineDepth; i++)
-            {
-                pipelineModificationsAfterOptimizations.Additions.Add(RegisterStep.Create(i.ToString(), typeof(Behavior1AfterOptimization), i.ToString(), b => new Behavior1AfterOptimization()));
-            }
-            
             pipelineModificationsAfterOptimizationsWithUnsafe = new PipelineModifications();
             for (int i = 0; i < PipelineDepth; i++)
             {
@@ -51,25 +44,17 @@ namespace MicroBenchmarks.NServiceBus
         }
 
         [Benchmark(Baseline = true)]
-        public PipelineBeforeOptimizations<IBehaviorContext> V8_PipelineBeforeOptimizations()
+        public PipelineAfterOptimizations<IBehaviorContext> V8_PipelineBeforeOptimizations()
         {
-            var pipeline = new PipelineBeforeOptimizations<IBehaviorContext>(null, new SettingsHolder(),
+            var pipeline = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModificationsBeforeOptimizations);
             return pipeline;
         }
 
         [Benchmark]
-        public PipelineAfterOptimizations<IBehaviorContext> V8_PipelineAfterOptimizations()
+        public PipelineAfterOptimizationsUnsafeAndMemoryMarshal<IBehaviorContext> V8_PipelineAfterOptimizationsWithUnsafe()
         {
-            var pipeline = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
-                pipelineModificationsAfterOptimizations);
-            return pipeline;
-        }
-        
-        [Benchmark]
-        public PipelineAfterOptimizations<IBehaviorContext> V8_PipelineAfterOptimizationsWithUnsafe()
-        {
-            var pipeline = new PipelineAfterOptimizations<IBehaviorContext>(null, new SettingsHolder(),
+            var pipeline = new PipelineAfterOptimizationsUnsafeAndMemoryMarshal<IBehaviorContext>(null, new SettingsHolder(),
                 pipelineModificationsAfterOptimizationsWithUnsafe);
             return pipeline;
         }
