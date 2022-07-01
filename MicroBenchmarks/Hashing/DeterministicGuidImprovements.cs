@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Buffers;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -25,18 +27,26 @@ public class DeterministicGuidImprovements
         }
     }
 
-    private string src;
+    private string part1;
+    private string part2;
+    private string part3;
+
+    [Params(1)]
+    public int Length { get; set; }
 
     [IterationSetup]
     public void Setup()
     {
-        src = $"{typeof(DeterministicGuidImprovements).FullName}_PropertyName_{Guid.NewGuid()}";
-
+        part1 = string.Join(string.Empty, Enumerable.Range(0, Length).Select(_ => Guid.NewGuid()));
+        part2 = string.Join(string.Empty, Enumerable.Range(0, Length).Select(_ => Guid.NewGuid()));
+        part3 = string.Join(string.Empty, Enumerable.Range(0, Length).Select(_ => Guid.NewGuid()));
     }
 
     [Benchmark(Baseline = true)]
     public Guid ComputeAndResize()
     {
+        var src = $"{part1}{part2}{part3}";
+
         var stringBytes = Encoding.UTF8.GetBytes(src);
 
         using var sha1CryptoServiceProvider = SHA1.Create();
@@ -48,6 +58,7 @@ public class DeterministicGuidImprovements
     [Benchmark]
     public Guid RentAndSpan()
     {
+        var src = $"{part1}{part2}{part3}";
         var byteCount = Encoding.UTF8.GetByteCount(src);
         var buffer = ArrayPool<byte>.Shared.Rent(byteCount);
         try
@@ -71,6 +82,7 @@ public class DeterministicGuidImprovements
     [Benchmark]
     public Guid RentAndSpanTryCompute()
     {
+        var src = $"{part1}{part2}{part3}";
         var byteCount = Encoding.UTF8.GetByteCount(src);
         var stringBuffer = ArrayPool<byte>.Shared.Rent(byteCount);
         var hashBuffer = ArrayPool<byte>.Shared.Rent(20);
@@ -108,6 +120,7 @@ public class DeterministicGuidImprovements
     [Benchmark]
     public Guid RentAndSpanTryComputeAndStackalloc()
     {
+        var src = $"{part1}{part2}{part3}";
         var byteCount = Encoding.UTF8.GetByteCount(src);
         var stringBuffer = ArrayPool<byte>.Shared.Rent(byteCount);
         try
@@ -128,6 +141,47 @@ public class DeterministicGuidImprovements
         finally
         {
             ArrayPool<byte>.Shared.Return(stringBuffer, clearArray: true);
+        }
+    }
+
+    [Benchmark]
+    [SkipLocalsInit]
+    public Guid RentAndSpanTryComputeAndStackallocWithStaticAndNoStringAlloc()
+    {
+        var length = part1.Length + part2.Length +
+                     part3.Length + 2; // two separators
+
+        const int MaxStackLimit = 256;
+        const byte SeperatorByte = 95;
+        var encoding = Encoding.UTF8;
+        var maxByteCount = encoding.GetMaxByteCount(length);
+
+        byte[]? sharedBuffer = null;
+        var stringBufferSpan = maxByteCount <= MaxStackLimit ?
+            stackalloc byte[MaxStackLimit] :
+            sharedBuffer = ArrayPool<byte>.Shared.Rent(maxByteCount);
+
+        try
+        {
+            var numberOfBytesWritten = encoding.GetBytes(part1.AsSpan(), stringBufferSpan);
+            stringBufferSpan[numberOfBytesWritten++] = SeperatorByte;
+
+            numberOfBytesWritten += encoding.GetBytes(part2.AsSpan(), stringBufferSpan[numberOfBytesWritten..]);
+            stringBufferSpan[numberOfBytesWritten++] = SeperatorByte;
+
+            numberOfBytesWritten += encoding.GetBytes(part3.AsSpan(), stringBufferSpan[numberOfBytesWritten..]);
+
+            Span<byte> hashBuffer = stackalloc byte[20];
+            _ = SHA1.HashData(stringBufferSpan[..numberOfBytesWritten], hashBuffer);
+            var guidBytes = hashBuffer[..16];
+            return new Guid(guidBytes);
+        }
+        finally
+        {
+            if (sharedBuffer != null)
+            {
+                ArrayPool<byte>.Shared.Return(sharedBuffer, clearArray: true);
+            }
         }
     }
 }
