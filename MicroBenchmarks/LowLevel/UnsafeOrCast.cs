@@ -1,74 +1,74 @@
-﻿namespace MicroBenchmarks.LowLevel
+﻿using BenchmarkDotNet.Attributes;
+
+namespace MicroBenchmarks.LowLevel;
+
+using System.Runtime.CompilerServices;
+using BenchmarkDotNet.Columns;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
+using BenchmarkDotNet.Exporters;
+
+[Config(typeof(Config))]
+public class UnsafeOrCast
 {
-    using System.Runtime.CompilerServices;
-    using BenchmarkDotNet.Attributes;
-    using BenchmarkDotNet.Columns;
-    using BenchmarkDotNet.Configs;
-    using BenchmarkDotNet.Diagnosers;
-    using BenchmarkDotNet.Exporters;
-
-    [Config(typeof(Config))]
-    public class UnsafeOrCast
+    private class Config : ManualConfig
     {
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                AddExporter(MarkdownExporter.GitHub);
-                AddDiagnoser(MemoryDiagnoser.Default);
-                AddColumn(StatisticColumn.AllStatistics);
-                //Add(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(printSource: true, exportDiff: true)));
+            AddExporter(MarkdownExporter.GitHub);
+            AddDiagnoser(MemoryDiagnoser.Default);
+            AddColumn(StatisticColumn.AllStatistics);
+            //Add(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(printSource: true, exportDiff: true)));
+        }
+    }
+
+    [Benchmark(Baseline = true)]
+    public int CastMethod()
+    {
+        return CastUtil.GetValue<int>();
+    }
+
+    [Benchmark()]
+    public int UnsafeMethod()
+    {
+        return UnsafeUtil.GetValue<int>();
+    }
+
+    static class CastUtil {
+        public static TValue GetValue<TValue>() {
+            var type = typeof(TValue);
+
+            switch(type) {
+                case {} when type == typeof(int):
+                    var intValue = GetInt();
+                    return (TValue)(object)intValue;
+                case {} when type == typeof(double):
+                    var doubleValue = GetDouble();
+                    return (TValue)(object)doubleValue;
             }
+            return default;
         }
 
-        [Benchmark(Baseline = true)]
-        public int CastMethod()
-        {
-            return CastUtil.GetValue<int>();
-        }
+        public static int GetInt() => 4;
+        public static double GetDouble() => 4;
+    }
 
-        [Benchmark()]
-        public int UnsafeMethod()
-        {
-            return UnsafeUtil.GetValue<int>();
-        }
+    static class UnsafeUtil {
+        public static TValue GetValue<TValue>() {
+            var type = typeof(TValue);
 
-        static class CastUtil {
-            public static TValue GetValue<TValue>() {
-                var type = typeof(TValue);
-
-                switch(type) {
-                    case {} when type == typeof(int):
-                        var intValue = GetInt();
-                        return (TValue)(object)intValue;
-                    case {} when type == typeof(double):
-                        var doubleValue = GetDouble();
-                        return (TValue)(object)doubleValue;
-                }
-                return default;
+            switch(type) {
+                case {} when type == typeof(int):
+                    var intValue = GetInt();
+                    return Unsafe.As<int, TValue>(ref intValue);
+                case {} when type == typeof(double):
+                    var doubleValue = GetDouble();
+                    return Unsafe.As<double, TValue>(ref doubleValue);
             }
-
-            public static int GetInt() => 4;
-            public static double GetDouble() => 4;
+            return default;
         }
 
-        static class UnsafeUtil {
-            public static TValue GetValue<TValue>() {
-                var type = typeof(TValue);
-
-                switch(type) {
-                    case {} when type == typeof(int):
-                        var intValue = GetInt();
-                        return Unsafe.As<int, TValue>(ref intValue);
-                    case {} when type == typeof(double):
-                        var doubleValue = GetDouble();
-                        return Unsafe.As<double, TValue>(ref doubleValue);
-                }
-                return default;
-            }
-
-            public static int GetInt() => 4;
-            public static double GetDouble() => 4;
-        }
+        public static int GetInt() => 4;
+        public static double GetDouble() => 4;
     }
 }

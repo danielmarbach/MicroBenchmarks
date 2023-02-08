@@ -9,136 +9,135 @@ using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 
-namespace MicroBenchmarks.Tasks
+namespace MicroBenchmarks.Tasks;
+
+[Config(typeof(Config))]
+public class TaskWithWaitCancellation_Successful
 {
-    [Config(typeof(Config))]
-    public class TaskWithWaitCancellation_Successful
+    private class Config : ManualConfig
     {
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                Add(MarkdownExporter.GitHub);
-                Add(MemoryDiagnoser.Default);
-            }
-        }
-
-        [Benchmark(Baseline = true)]
-        public async Task<int> LinkedTokenSources_Successful()
-        {
-            using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10)))
-            {
-                return await Successful().WithWaitCancellationLinkedTokenSource(cts.Token).ConfigureAwait(false);
-            }
-        }
-
-        [Benchmark]
-        public async Task<int> TaskCompletionSource_Successful()
-        {
-            using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10)))
-            {
-                return await Successful().WithWaitCancellationTaskCompletionSource(cts.Token).ConfigureAwait(false);
-            }
-        }
-
-        static async Task<int> Successful()
-        {
-            await Task.Delay(2).ConfigureAwait(false);
-            return 42;
+            Add(MarkdownExporter.GitHub);
+            Add(MemoryDiagnoser.Default);
         }
     }
 
-    [Config(typeof(Config))]
-    public class TaskWithWaitCancellation_Canceled
+    [Benchmark(Baseline = true)]
+    public async Task<int> LinkedTokenSources_Successful()
     {
-        private class Config : ManualConfig
+        using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10)))
         {
-            public Config()
-            {
-                Add(MarkdownExporter.GitHub);
-                Add(MemoryDiagnoser.Default);
-                // Add(Job.Default.With(Platform.X64).WithIterationCount(100));
-                // Add(Job.Default.With(Platform.X86).WithIterationCount(100));
-            }
-        }
-
-        [Benchmark(Baseline = true)]
-        public async Task<int> LinkedTokenSources_Canceled()
-        {
-            using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(5)))
-            {
-                return await Canceled().WithWaitCancellationLinkedTokenSource(cts.Token).ConfigureAwait(false);
-            }
-        }
-
-        [Benchmark]
-        public async Task<int> TaskCompletionSource_Canceled()
-        {
-            using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(5)))
-            {
-                return await Canceled().WithWaitCancellationTaskCompletionSource(cts.Token).ConfigureAwait(false);
-            }
-        }
-
-        static async Task<int> Canceled()
-        {
-            await Task.Delay(10).ConfigureAwait(false);
-            return 42;
+            return await Successful().WithWaitCancellationLinkedTokenSource(cts.Token).ConfigureAwait(false);
         }
     }
 
-    [Config(typeof(Config))]
-    public class TaskWithWaitCancellation_Failure
+    [Benchmark]
+    public async Task<int> TaskCompletionSource_Successful()
     {
-        private class Config : ManualConfig
+        using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10)))
         {
-            public Config()
+            return await Successful().WithWaitCancellationTaskCompletionSource(cts.Token).ConfigureAwait(false);
+        }
+    }
+
+    static async Task<int> Successful()
+    {
+        await Task.Delay(2).ConfigureAwait(false);
+        return 42;
+    }
+}
+
+[Config(typeof(Config))]
+public class TaskWithWaitCancellation_Canceled
+{
+    private class Config : ManualConfig
+    {
+        public Config()
+        {
+            Add(MarkdownExporter.GitHub);
+            Add(MemoryDiagnoser.Default);
+            // Add(Job.Default.With(Platform.X64).WithIterationCount(100));
+            // Add(Job.Default.With(Platform.X86).WithIterationCount(100));
+        }
+    }
+
+    [Benchmark(Baseline = true)]
+    public async Task<int> LinkedTokenSources_Canceled()
+    {
+        using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(5)))
+        {
+            return await Canceled().WithWaitCancellationLinkedTokenSource(cts.Token).ConfigureAwait(false);
+        }
+    }
+
+    [Benchmark]
+    public async Task<int> TaskCompletionSource_Canceled()
+    {
+        using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(5)))
+        {
+            return await Canceled().WithWaitCancellationTaskCompletionSource(cts.Token).ConfigureAwait(false);
+        }
+    }
+
+    static async Task<int> Canceled()
+    {
+        await Task.Delay(10).ConfigureAwait(false);
+        return 42;
+    }
+}
+
+[Config(typeof(Config))]
+public class TaskWithWaitCancellation_Failure
+{
+    private class Config : ManualConfig
+    {
+        public Config()
+        {
+            Add(MarkdownExporter.GitHub);
+            Add(MemoryDiagnoser.Default);
+            // Add(Job.Default.With(Platform.X64).WithIterationCount(100));
+            // Add(Job.Default.With(Platform.X86).WithIterationCount(100));
+        }
+    }
+
+    [Benchmark(Baseline = true)]
+    public async Task<int> LinkedTokenSources_Failure()
+    {
+        using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10)))
+        {
+            try
             {
-                Add(MarkdownExporter.GitHub);
-                Add(MemoryDiagnoser.Default);
-                // Add(Job.Default.With(Platform.X64).WithIterationCount(100));
-                // Add(Job.Default.With(Platform.X86).WithIterationCount(100));
+                return await Failure().WithWaitCancellationLinkedTokenSource(cts.Token).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // ignored
+                return 42;
             }
         }
+    }
 
-        [Benchmark(Baseline = true)]
-        public async Task<int> LinkedTokenSources_Failure()
+    [Benchmark]
+    public async Task<int> TaskCompletionSource_Failure()
+    {
+        using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10)))
         {
-            using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10)))
+            try
             {
-                try
-                {
-                    return await Failure().WithWaitCancellationLinkedTokenSource(cts.Token).ConfigureAwait(false);
-                }
-                catch (Exception)
-                {
-                    // ignored
-                    return 42;
-                }
+                return await Failure().WithWaitCancellationTaskCompletionSource(cts.Token).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // ignored
+                return 42;
             }
         }
+    }
 
-        [Benchmark]
-        public async Task<int> TaskCompletionSource_Failure()
-        {
-            using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10)))
-            {
-                try
-                {
-                    return await Failure().WithWaitCancellationTaskCompletionSource(cts.Token).ConfigureAwait(false);
-                }
-                catch (Exception)
-                {
-                    // ignored
-                    return 42;
-                }
-            }
-        }
-
-        static async Task<int> Failure()
-        {
-            await Task.Delay(2).ConfigureAwait(false);
-            throw new InvalidOperationException();
-        }
+    static async Task<int> Failure()
+    {
+        await Task.Delay(2).ConfigureAwait(false);
+        throw new InvalidOperationException();
     }
 }

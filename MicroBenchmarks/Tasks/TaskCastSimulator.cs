@@ -1,13 +1,12 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace MicroBenchmarks
+namespace MicroBenchmarks.Tasks;
+
+public static class TaskCastSimulator
 {
-    public static class TaskCastSimulator
+    public static Task<IReadOnlyCollection<int>> Simulate()
     {
-        public static Task<IReadOnlyCollection<int>> Simulate()
-        {
-            return Helper.YieldList().Cast<List<int>, IReadOnlyCollection <int>>();
-        }
+        return Helper.YieldList().Cast<List<int>, IReadOnlyCollection <int>>();
     }
 }

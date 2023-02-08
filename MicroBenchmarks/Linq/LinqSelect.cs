@@ -7,56 +7,55 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 
-namespace MicroBenchmarks.Linq
+namespace MicroBenchmarks.Linq;
+
+[Config(typeof(Config))]
+public class LinqSelect
 {
-    [Config(typeof(Config))]
-    public class LinqSelect
+    private List<int> list;
+
+    private class Config : ManualConfig
     {
-        private List<int> list;
-
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                AddExporter(MarkdownExporter.GitHub);
-                AddDiagnoser(MemoryDiagnoser.Default);
-                AddColumn(StatisticColumn.AllStatistics);
-            }
+            AddExporter(MarkdownExporter.GitHub);
+            AddDiagnoser(MemoryDiagnoser.Default);
+            AddColumn(StatisticColumn.AllStatistics);
         }
-        [Params(2, 4, 8, 16, 32, 64)]
-        public int Elements { get; set; }
+    }
+    [Params(2, 4, 8, 16, 32, 64)]
+    public int Elements { get; set; }
 
-        [GlobalSetup]
-        public void SetUp()
+    [GlobalSetup]
+    public void SetUp()
+    {
+        list = Enumerable.Range(0, Elements).ToList();
+    }
+
+    [Benchmark(Baseline = true)]
+    public void Foreach()
+    {
+        foreach (var i in list)
         {
-            list = Enumerable.Range(0, Elements).ToList();
+            GC.KeepAlive(i);
         }
+    }
 
-        [Benchmark(Baseline = true)]
-        public void Foreach()
+    [Benchmark]
+    public void For()
+    {
+        for (int i = 0; i < list.Count; i++)
         {
-            foreach (var i in list)
-            {
-                GC.KeepAlive(i);
-            }
+            GC.KeepAlive(list[i]);
         }
+    }
 
-        [Benchmark]
-        public void For()
+    [Benchmark]
+    public void Select()
+    {
+        foreach (var result in list.Select(i => i))
         {
-            for (int i = 0; i < list.Count; i++)
-            {
-                GC.KeepAlive(list[i]);
-            }
-        }
-
-        [Benchmark]
-        public void Select()
-        {
-            foreach (var result in list.Select(i => i))
-            {
-                GC.KeepAlive(result);
-            }
+            GC.KeepAlive(result);
         }
     }
 }

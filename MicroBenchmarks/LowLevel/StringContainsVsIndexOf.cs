@@ -5,33 +5,32 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 
-namespace MicroBenchmarks.LowLevel
+namespace MicroBenchmarks.LowLevel;
+
+[Config(typeof(Config))]
+public class StringContainsVsIndexOf
 {
-    [Config(typeof(Config))]
-    public class StringContainsVsIndexOf
+    private string MatchingString = "ThisIsAVeryLongStringContainingTheThingWeLookFor__impl";
+        
+    private class Config : ManualConfig
     {
-        private string MatchingString = "ThisIsAVeryLongStringContainingTheThingWeLookFor__impl";
-        
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                AddExporter(MarkdownExporter.GitHub);
-                AddDiagnoser(MemoryDiagnoser.Default);
-                AddColumn(StatisticColumn.AllStatistics);
-            }
+            AddExporter(MarkdownExporter.GitHub);
+            AddDiagnoser(MemoryDiagnoser.Default);
+            AddColumn(StatisticColumn.AllStatistics);
         }
+    }
         
-        [Benchmark(Baseline = true)]
-        public bool Contains()
-        {
-            return MatchingString.Contains("__impl");
-        }
+    [Benchmark(Baseline = true)]
+    public bool Contains()
+    {
+        return MatchingString.Contains("__impl");
+    }
         
-        [Benchmark]
-        public bool IndexOf()
-        {
-            return MatchingString.AsSpan().IndexOf("__impl".AsSpan()) != -1;
-        }
+    [Benchmark]
+    public bool IndexOf()
+    {
+        return MatchingString.AsSpan().IndexOf("__impl".AsSpan()) != -1;
     }
 }

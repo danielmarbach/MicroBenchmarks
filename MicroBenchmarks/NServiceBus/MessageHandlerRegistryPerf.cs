@@ -4,95 +4,94 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 
-namespace MicroBenchmarks.NServiceBus
+namespace MicroBenchmarks.NServiceBus;
+
+[Config(typeof(Config))]
+public class MessageHandlerRegistryPerf
 {
-    [Config(typeof(Config))]
-    public class MessageHandlerRegistryPerf
+    private class Config : ManualConfig
     {
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                Add(MarkdownExporter.GitHub);
-                Add(MemoryDiagnoser.Default);
-                Add(StatisticColumn.AllStatistics);
-            }
+            Add(MarkdownExporter.GitHub);
+            Add(MemoryDiagnoser.Default);
+            Add(StatisticColumn.AllStatistics);
         }
+    }
 
-        [Params(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)]
-        public int Calls { get; set; }
+    [Params(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)]
+    public int Calls { get; set; }
 
-        [GlobalSetup]
-        public void SetUp()
+    [GlobalSetup]
+    public void SetUp()
+    {
+        registryBefore = SetupRegistryBeforeOptimizations();
+        registryAfter = SetupRegistryAfterOptimizations();
+    }
+
+    private static MessageHandlerRegistryBeforeOptimizations SetupRegistryBeforeOptimizations()
+    {
+        var conventions = new MessageHandlerRegistryBeforeOptimizations.Conventions();
+        conventions.AddSystemMessagesConventions(t => t == typeof(MessageHandlerRegistryBeforeOptimizations.MyMessage));
+
+        var registry = new MessageHandlerRegistryBeforeOptimizations(conventions);
+        registry.RegisterHandler(typeof(MessageHandlerRegistryBeforeOptimizations.Handler1));
+        registry.RegisterHandler(typeof(MessageHandlerRegistryBeforeOptimizations.Handler2));
+        registry.RegisterHandler(typeof(MessageHandlerRegistryBeforeOptimizations.Handler3));
+        registry.RegisterHandler(typeof(MessageHandlerRegistryBeforeOptimizations.Handler4));
+        registry.RegisterHandler(typeof(MessageHandlerRegistryBeforeOptimizations.Handler5));
+
+        var handlers = registry.GetHandlersFor(typeof(MessageHandlerRegistryBeforeOptimizations.MyMessage));
+        foreach (var messageHandler in handlers)
         {
-            registryBefore = SetupRegistryBeforeOptimizations();
-            registryAfter = SetupRegistryAfterOptimizations();
         }
+        return registry;
+    }
 
-        private static MessageHandlerRegistryBeforeOptimizations SetupRegistryBeforeOptimizations()
+    static MessageHandlerRegistryAfterOptimizations SetupRegistryAfterOptimizations()
+    {
+        var conventions = new MessageHandlerRegistryAfterOptimizations.Conventions();
+        conventions.AddSystemMessagesConventions(t => t == typeof(MessageHandlerRegistryAfterOptimizations.MyMessage));
+
+        var registry = new MessageHandlerRegistryAfterOptimizations(conventions);
+        registry.RegisterHandler(typeof(MessageHandlerRegistryAfterOptimizations.Handler1));
+        registry.RegisterHandler(typeof(MessageHandlerRegistryAfterOptimizations.Handler2));
+        registry.RegisterHandler(typeof(MessageHandlerRegistryAfterOptimizations.Handler3));
+        registry.RegisterHandler(typeof(MessageHandlerRegistryAfterOptimizations.Handler4));
+        registry.RegisterHandler(typeof(MessageHandlerRegistryAfterOptimizations.Handler5));
+
+        var handlers = registry.GetHandlersFor(typeof(MessageHandlerRegistryAfterOptimizations.MyMessage));
+        foreach (var messageHandler in handlers)
         {
-            var conventions = new MessageHandlerRegistryBeforeOptimizations.Conventions();
-            conventions.AddSystemMessagesConventions(t => t == typeof(MessageHandlerRegistryBeforeOptimizations.MyMessage));
+        }
+        return registry;
+    }
 
-            var registry = new MessageHandlerRegistryBeforeOptimizations(conventions);
-            registry.RegisterHandler(typeof(MessageHandlerRegistryBeforeOptimizations.Handler1));
-            registry.RegisterHandler(typeof(MessageHandlerRegistryBeforeOptimizations.Handler2));
-            registry.RegisterHandler(typeof(MessageHandlerRegistryBeforeOptimizations.Handler3));
-            registry.RegisterHandler(typeof(MessageHandlerRegistryBeforeOptimizations.Handler4));
-            registry.RegisterHandler(typeof(MessageHandlerRegistryBeforeOptimizations.Handler5));
+    private MessageHandlerRegistryBeforeOptimizations registryBefore;
+    private MessageHandlerRegistryAfterOptimizations registryAfter;
 
-            var handlers = registry.GetHandlersFor(typeof(MessageHandlerRegistryBeforeOptimizations.MyMessage));
+    [Benchmark(Baseline = true)]
+    public void V6_RegistryBeforeOptimizations()
+    {
+        for (int i = 0; i < Calls; i++)
+        {
+            var handlers = registryBefore.GetHandlersFor(typeof(MessageHandlerRegistryBeforeOptimizations.MyMessage));
             foreach (var messageHandler in handlers)
             {
             }
-            return registry;
         }
+    }
 
-        static MessageHandlerRegistryAfterOptimizations SetupRegistryAfterOptimizations()
+    [Benchmark]
+    public void V6_RegistryAfterOptimizations()
+    {
+        for (int i = 0; i < Calls; i++)
         {
-            var conventions = new MessageHandlerRegistryAfterOptimizations.Conventions();
-            conventions.AddSystemMessagesConventions(t => t == typeof(MessageHandlerRegistryAfterOptimizations.MyMessage));
-
-            var registry = new MessageHandlerRegistryAfterOptimizations(conventions);
-            registry.RegisterHandler(typeof(MessageHandlerRegistryAfterOptimizations.Handler1));
-            registry.RegisterHandler(typeof(MessageHandlerRegistryAfterOptimizations.Handler2));
-            registry.RegisterHandler(typeof(MessageHandlerRegistryAfterOptimizations.Handler3));
-            registry.RegisterHandler(typeof(MessageHandlerRegistryAfterOptimizations.Handler4));
-            registry.RegisterHandler(typeof(MessageHandlerRegistryAfterOptimizations.Handler5));
-
-            var handlers = registry.GetHandlersFor(typeof(MessageHandlerRegistryAfterOptimizations.MyMessage));
+            var handlers = registryAfter.GetHandlersFor(typeof(MessageHandlerRegistryAfterOptimizations.MyMessage));
             foreach (var messageHandler in handlers)
             {
             }
-            return registry;
         }
 
-        private MessageHandlerRegistryBeforeOptimizations registryBefore;
-        private MessageHandlerRegistryAfterOptimizations registryAfter;
-
-        [Benchmark(Baseline = true)]
-        public void V6_RegistryBeforeOptimizations()
-        {
-            for (int i = 0; i < Calls; i++)
-            {
-                var handlers = registryBefore.GetHandlersFor(typeof(MessageHandlerRegistryBeforeOptimizations.MyMessage));
-                foreach (var messageHandler in handlers)
-                {
-                }
-            }
-        }
-
-        [Benchmark]
-        public void V6_RegistryAfterOptimizations()
-        {
-            for (int i = 0; i < Calls; i++)
-            {
-                var handlers = registryAfter.GetHandlersFor(typeof(MessageHandlerRegistryAfterOptimizations.MyMessage));
-                foreach (var messageHandler in handlers)
-                {
-                }
-            }
-
-        }
     }
 }

@@ -5,53 +5,52 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 
-namespace MicroBenchmarks.Linq
+namespace MicroBenchmarks.Linq;
+
+using BenchmarkDotNet.Engines;
+
+[Config(typeof(Config))]
+public class ForeachVsFor
 {
-    using BenchmarkDotNet.Engines;
+    private int[] list;
+    private Consumer consumer;
 
-    [Config(typeof(Config))]
-    public class ForeachVsFor
+    private class Config : ManualConfig
     {
-        private int[] list;
-        private Consumer consumer;
-
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                AddExporter(MarkdownExporter.GitHub);
-                AddDiagnoser(MemoryDiagnoser.Default);
-                AddColumn(StatisticColumn.AllStatistics);
-            }
+            AddExporter(MarkdownExporter.GitHub);
+            AddDiagnoser(MemoryDiagnoser.Default);
+            AddColumn(StatisticColumn.AllStatistics);
         }
-        [Params(2, 4, 8, 16, 32, 64, 128)]
-        public int Elements { get; set; }
+    }
+    [Params(2, 4, 8, 16, 32, 64, 128)]
+    public int Elements { get; set; }
 
-        [GlobalSetup]
-        public void SetUp()
+    [GlobalSetup]
+    public void SetUp()
+    {
+        list = Enumerable.Range(0, Elements).ToArray();
+
+        consumer = new Consumer();
+    }
+
+    [Benchmark(Baseline = true)]
+    public void Foreach()
+    {
+        foreach (var i in list)
         {
-            list = Enumerable.Range(0, Elements).ToArray();
-
-            consumer = new Consumer();
+            consumer.Consume(i);
         }
+    }
 
-        [Benchmark(Baseline = true)]
-        public void Foreach()
+    [Benchmark]
+    public void For()
+    {
+        // ReSharper disable once ForCanBeConvertedToForeach
+        for (int i = 0; i < list.Length; i++)
         {
-            foreach (var i in list)
-            {
-                consumer.Consume(i);
-            }
-        }
-
-        [Benchmark]
-        public void For()
-        {
-            // ReSharper disable once ForCanBeConvertedToForeach
-            for (int i = 0; i < list.Length; i++)
-            {
-                consumer.Consume(list[i]);
-            }
+            consumer.Consume(list[i]);
         }
     }
 }

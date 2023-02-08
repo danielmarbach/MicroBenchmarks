@@ -5,43 +5,42 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 
-namespace MicroBenchmarks.Tasks
+namespace MicroBenchmarks.Tasks;
+
+[Config(typeof(Config))]
+public class TaskVSValueTask
 {
-    [Config(typeof(Config))]
-    public class TaskVSValueTask
+    private class Config : ManualConfig
     {
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                Add(MarkdownExporter.GitHub);
-                Add(MemoryDiagnoser.Default);
-                Add(StatisticColumn.AllStatistics);
-            }
+            Add(MarkdownExporter.GitHub);
+            Add(MemoryDiagnoser.Default);
+            Add(StatisticColumn.AllStatistics);
         }
+    }
 
-        [Benchmark]
-        public Task TaskCompleted()
-        {
-            return Task.CompletedTask;
-        }
+    [Benchmark]
+    public Task TaskCompleted()
+    {
+        return Task.CompletedTask;
+    }
 
-        [Benchmark]
-        public async Task TaskYield()
-        {
-            await Task.Yield();
-        }
+    [Benchmark]
+    public async Task TaskYield()
+    {
+        await Task.Yield();
+    }
 
-        [Benchmark]
-        public ValueTask ValueTask()
-        {
-            return default;
-        }
+    [Benchmark]
+    public ValueTask ValueTask()
+    {
+        return default;
+    }
 
-        [Benchmark]
-        public async ValueTask ValueTaskYield()
-        {
-            await Task.Yield();
-        }
+    [Benchmark]
+    public async ValueTask ValueTaskYield()
+    {
+        await Task.Yield();
     }
 }

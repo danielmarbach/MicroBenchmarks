@@ -5,88 +5,85 @@ using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
-using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Exporters;
-using BenchmarkDotNet.Jobs;
 
-namespace MicroBenchmarks
+namespace MicroBenchmarks.Tasks;
+
+[Config(typeof(Config))]
+public class BatchedVsImmediateSimulated
 {
-    [Config(typeof(Config))]
-    public class BatchedVsImmediateSimulated
+    private class Config : ManualConfig
     {
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                AddExporter(MarkdownExporter.GitHub);
-                AddDiagnoser(MemoryDiagnoser.Default);
-            }
+            AddExporter(MarkdownExporter.GitHub);
+            AddDiagnoser(MemoryDiagnoser.Default);
+        }
+    }
+
+    [Params(2, 4, 8, 16, 32, 64)]
+    public int Concurrency { get; set; }
+
+
+    [Benchmark]
+    public async Task ConcurrentBatched()
+    {
+        var concurrentStack = new ConcurrentStack<MyMessage>();
+        var context = new Context();
+
+        var batches = new Task[Concurrency];
+        for (var i = 0; i < Concurrency; i++)
+        {
+            batches[i] = context.Send(new MyMessage { Counter = i }, concurrentStack);
+        }
+        await Task.WhenAll(batches).ConfigureAwait(false);
+
+
+        var actualSends = new List<Task>(Concurrency);
+        foreach (var message in concurrentStack)
+        {
+            actualSends.Add(context.ActualSend(message));
+        }
+        await Task.WhenAll(actualSends).ConfigureAwait(false);
+    }
+
+    [Benchmark]
+    public async Task SequentialBatched()
+    {
+        var concurrentStack = new ConcurrentStack<MyMessage>();
+        var context = new Context();
+
+        for (var i = 0; i < Concurrency; i++)
+        {
+            await context.Send(new MyMessage { Counter = i }, concurrentStack).ConfigureAwait(false);
         }
 
-        [Params(2, 4, 8, 16, 32, 64)]
-        public int Concurrency { get; set; }
-
-
-        [Benchmark]
-        public async Task ConcurrentBatched()
+        var actualSends = new List<Task>(Concurrency);
+        foreach (var message in concurrentStack)
         {
-            var concurrentStack = new ConcurrentStack<MyMessage>();
-            var context = new Context();
+            actualSends.Add(context.ActualSend(message));
+        }
+        await Task.WhenAll(actualSends).ConfigureAwait(false);
+    }
 
-            var batches = new Task[Concurrency];
-            for (var i = 0; i < Concurrency; i++)
-            {
-                batches[i] = context.Send(new MyMessage { Counter = i }, concurrentStack);
-            }
-            await Task.WhenAll(batches).ConfigureAwait(false);
+    class MyMessage
+    {
+        public int Counter { get; set; }
+    }
 
-
-            var actualSends = new List<Task>(Concurrency);
-            foreach (var message in concurrentStack)
-            {
-                actualSends.Add(context.ActualSend(message));
-            }
-            await Task.WhenAll(actualSends).ConfigureAwait(false);
+    class Context
+    {
+        public Task Send(MyMessage message, ConcurrentStack<MyMessage> stack)
+        {
+            stack.Push(message);
+            return Task.CompletedTask; // assumes nothing else is happening
         }
 
-        [Benchmark]
-        public async Task SequentialBatched()
+        public async Task ActualSend(MyMessage message)
         {
-            var concurrentStack = new ConcurrentStack<MyMessage>();
-            var context = new Context();
-
-            for (var i = 0; i < Concurrency; i++)
+            using (var streamWriter = File.CreateText(Path.GetFileName(Path.GetTempFileName())))
             {
-                await context.Send(new MyMessage { Counter = i }, concurrentStack).ConfigureAwait(false);
-            }
-
-            var actualSends = new List<Task>(Concurrency);
-            foreach (var message in concurrentStack)
-            {
-                actualSends.Add(context.ActualSend(message));
-            }
-            await Task.WhenAll(actualSends).ConfigureAwait(false);
-        }
-
-        class MyMessage
-        {
-            public int Counter { get; set; }
-        }
-
-        class Context
-        {
-            public Task Send(MyMessage message, ConcurrentStack<MyMessage> stack)
-            {
-                stack.Push(message);
-                return Task.CompletedTask; // assumes nothing else is happening
-            }
-
-            public async Task ActualSend(MyMessage message)
-            {
-                using (var streamWriter = File.CreateText(Path.GetFileName(Path.GetTempFileName())))
-                {
-                    await streamWriter.WriteLineAsync(message.Counter.ToString()).ConfigureAwait(false);
-                }
+                await streamWriter.WriteLineAsync(message.Counter.ToString()).ConfigureAwait(false);
             }
         }
     }

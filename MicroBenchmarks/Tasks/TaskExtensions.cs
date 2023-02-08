@@ -1,31 +1,29 @@
 using System.Threading.Tasks;
 
-namespace MicroBenchmarks
+namespace MicroBenchmarks.Tasks;
+
+public static class TaskExtensions
 {
-    public static class TaskExtensions
+    public static Task<TResult> Cast<TSource, TResult>(this Task<TSource> task) where TSource : TResult
     {
-        public static Task<TResult> Cast<TSource, TResult>(this Task<TSource> task) where TSource : TResult
+        var tcs = new TaskCompletionSource<TResult>();
+
+        task.ContinueWith(t =>
         {
-            var tcs = new TaskCompletionSource<TResult>();
-
-            task.ContinueWith(t =>
+            if (t.IsFaulted)
             {
-                if (t.IsFaulted)
-                {
-                    tcs.TrySetException(t.Exception.InnerExceptions);
-                }
-                else if (t.IsCanceled)
-                {
-                    tcs.TrySetCanceled();
-                }
-                else
-                {
-                    tcs.TrySetResult(t.Result);
-                }
-            }, TaskContinuationOptions.ExecuteSynchronously);
+                tcs.TrySetException(t.Exception.InnerExceptions);
+            }
+            else if (t.IsCanceled)
+            {
+                tcs.TrySetCanceled();
+            }
+            else
+            {
+                tcs.TrySetResult(t.Result);
+            }
+        }, TaskContinuationOptions.ExecuteSynchronously);
 
-            return tcs.Task;
-        }
+        return tcs.Task;
     }
-
 }

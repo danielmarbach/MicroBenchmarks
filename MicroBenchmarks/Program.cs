@@ -1,13 +1,12 @@
 using BenchmarkDotNet.Running;
 
-namespace MicroBenchmarks
+namespace MicroBenchmarks;
+
+class Program
 {
-    class Program
+    static void Main(string[] args)
     {
-        static void Main(string[] args)
-        {
-            var switcher = new BenchmarkSwitcher(typeof(Program).Assembly);
-            switcher.Run(args);
-        }
+        var switcher = new BenchmarkSwitcher(typeof(Program).Assembly);
+        switcher.Run(args);
     }
 }

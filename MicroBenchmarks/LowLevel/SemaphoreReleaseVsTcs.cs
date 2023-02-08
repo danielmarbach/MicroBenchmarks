@@ -8,57 +8,56 @@ using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 
-namespace MicroBenchmarks.LowLevel
+namespace MicroBenchmarks.LowLevel;
+
+[Config(typeof(Config))]
+public class SemaphoreReleaseVsTcs
 {
-    [Config(typeof(Config))]
-    public class SemaphoreReleaseVsTcs
+    private volatile TaskCompletionSource<bool> tcs;
+    private SemaphoreSlim semaphore;
+    private CancellationTokenSource cts;
+    private Task createContention;
+
+    private class Config : ManualConfig
     {
-        private volatile TaskCompletionSource<bool> tcs;
-        private SemaphoreSlim semaphore;
-        private CancellationTokenSource cts;
-        private Task createContention;
-
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
+            AddExporter(MarkdownExporter.GitHub);
+            AddDiagnoser(MemoryDiagnoser.Default);
+        }
+    }
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        this.tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        this.semaphore = new SemaphoreSlim(0);
+        this.cts = new CancellationTokenSource();
+        this.createContention = Task.Run(() =>
+        {
+            while (cts.IsCancellationRequested)
             {
-                AddExporter(MarkdownExporter.GitHub);
-                AddDiagnoser(MemoryDiagnoser.Default);
+                this.tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             }
-        }
+        });
+    }
 
-        [GlobalSetup]
-        public void Setup()
-        {
-            this.tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            this.semaphore = new SemaphoreSlim(0);
-            this.cts = new CancellationTokenSource();
-            this.createContention = Task.Run(() =>
-            {
-                while (cts.IsCancellationRequested)
-                {
-                    this.tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                }
-            });
-        }
+    [GlobalCleanup]
+    public Task Cleanup()
+    {
+        cts.Cancel();
+        return this.createContention;
+    }
 
-        [GlobalCleanup]
-        public Task Cleanup()
-        {
-            cts.Cancel();
-            return this.createContention;
-        }
+    [Benchmark(Baseline = true)]
+    public void TaskCompletionSource()
+    {
+        this.tcs.TrySetResult(true);
+    }
 
-        [Benchmark(Baseline = true)]
-        public void TaskCompletionSource()
-        {
-            this.tcs.TrySetResult(true);
-        }
-
-        [Benchmark]
-        public void SemaphoreSlim()
-        {
-            semaphore.Release();
-        }
+    [Benchmark]
+    public void SemaphoreSlim()
+    {
+        semaphore.Release();
     }
 }

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Buffers.Binary;
+using BenchmarkDotNet.Attributes;
 #if NETFRAMEWORK
 using System.Runtime.InteropServices;
 #endif
-using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Environments;

@@ -4,44 +4,43 @@ using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Exporters;
 
-namespace MicroBenchmarks.Linq
+namespace MicroBenchmarks.Types;
+
+[Config(typeof(Config))]
+public class HashSetVsListWithContains
 {
-    [Config(typeof(Config))]
-    public class HashSetVsListWithContains
+    private class Config : ManualConfig
     {
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                Add(MarkdownExporter.GitHub);
-                //Add(new MemoryDiagnoser());
-                Add(StatisticColumn.AllStatistics);
-            }
+            Add(MarkdownExporter.GitHub);
+            //Add(new MemoryDiagnoser());
+            Add(StatisticColumn.AllStatistics);
         }
-        [Params(2, 4, 8, 16, 32, 64)]
-        public int Elements { get; set; }
+    }
+    [Params(2, 4, 8, 16, 32, 64)]
+    public int Elements { get; set; }
 
-        [Benchmark(Baseline = true)]
-        public void HashSet()
+    [Benchmark(Baseline = true)]
+    public void HashSet()
+    {
+        var hashSet = new HashSet<string>();
+        for (int i = 0; i < Elements; i++)
         {
-            var hashSet = new HashSet<string>();
-            for (int i = 0; i < Elements; i++)
-            {
-                hashSet.Add(i.ToString());
-            }
+            hashSet.Add(i.ToString());
         }
+    }
 
-        [Benchmark]
-        public void ListWithContains()
+    [Benchmark]
+    public void ListWithContains()
+    {
+        var hashSet = new List<string>();
+        for (int i = 0; i < Elements; i++)
         {
-            var hashSet = new List<string>();
-            for (int i = 0; i < Elements; i++)
+            var value = i.ToString();
+            if (!hashSet.Contains(value))
             {
-                var value = i.ToString();
-                if (!hashSet.Contains(value))
-                {
-                    hashSet.Add(value);
-                }
+                hashSet.Add(value);
             }
         }
     }

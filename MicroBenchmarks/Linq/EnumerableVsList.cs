@@ -7,58 +7,57 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Exporters;
 
-namespace MicroBenchmarks.Linq
+namespace MicroBenchmarks.Linq;
+
+[Config(typeof(Config))]
+public class EnumerableVsList
 {
-    [Config(typeof(Config))]
-    public class EnumerableVsList
+    private List<int> list;
+    private IList<int> ilist;
+
+    private class Config : ManualConfig
     {
-        private List<int> list;
-        private IList<int> ilist;
-
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                AddExporter(MarkdownExporter.GitHub);
-                AddDiagnoser(MemoryDiagnoser.Default);
-                AddColumn(StatisticColumn.AllStatistics);
-            }
+            AddExporter(MarkdownExporter.GitHub);
+            AddDiagnoser(MemoryDiagnoser.Default);
+            AddColumn(StatisticColumn.AllStatistics);
         }
-        [Params(2, 4, 8, 16, 32, 64, 128)]
-        public int Elements { get; set; }
+    }
+    [Params(2, 4, 8, 16, 32, 64, 128)]
+    public int Elements { get; set; }
 
-        [GlobalSetup]
-        public void SetUp()
+    [GlobalSetup]
+    public void SetUp()
+    {
+        list = Enumerable.Range(0, Elements).ToList();
+        ilist = list;
+    }
+
+    [Benchmark(Baseline = true)]
+    public void List()
+    {
+        foreach (var i in list)
         {
-            list = Enumerable.Range(0, Elements).ToList();
-            ilist = list;
+            GC.KeepAlive(i);
         }
+    }
 
-        [Benchmark(Baseline = true)]
-        public void List()
+    [Benchmark]
+    public void IList()
+    {
+        foreach (var i in ilist)
         {
-            foreach (var i in list)
-            {
-                GC.KeepAlive(i);
-            }
+            GC.KeepAlive(i);
         }
+    }
 
-        [Benchmark]
-        public void IList()
+    [Benchmark]
+    public void Enumberable()
+    {
+        foreach (var i in list.AsEnumerable())
         {
-            foreach (var i in ilist)
-            {
-                GC.KeepAlive(i);
-            }
-        }
-
-        [Benchmark]
-        public void Enumberable()
-        {
-            foreach (var i in list.AsEnumerable())
-            {
-                GC.KeepAlive(i);
-            }
+            GC.KeepAlive(i);
         }
     }
 }

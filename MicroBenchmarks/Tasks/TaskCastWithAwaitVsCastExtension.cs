@@ -2,36 +2,33 @@ using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
-using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Exporters;
-using BenchmarkDotNet.Jobs;
 
-namespace MicroBenchmarks
+namespace MicroBenchmarks.Tasks;
+
+[Config(typeof(Config))]
+public class TaskCastWithAwaitVsCastExtension
 {
-    [Config(typeof(Config))]
-    public class TaskCastWithAwaitVsCastExtension
+
+    private class Config : ManualConfig
     {
-
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                AddExporter(MarkdownExporter.GitHub);
-                AddDiagnoser(MemoryDiagnoser.Default);
-            }
+            AddExporter(MarkdownExporter.GitHub);
+            AddDiagnoser(MemoryDiagnoser.Default);
         }
+    }
 
 
-        [Benchmark]
-        public async Task TaskCastWithAwait()
-        {
-            await AwaitCastSimulator.Simulate().ConfigureAwait(false);
-        }
+    [Benchmark]
+    public async Task TaskCastWithAwait()
+    {
+        await AwaitCastSimulator.Simulate().ConfigureAwait(false);
+    }
 
-        [Benchmark]
-        public async Task TaskCastExtension()
-        {
-            await TaskCastSimulator.Simulate().ConfigureAwait(false);
-        }
+    [Benchmark]
+    public async Task TaskCastExtension()
+    {
+        await TaskCastSimulator.Simulate().ConfigureAwait(false);
     }
 }

@@ -1,66 +1,66 @@
-﻿namespace MicroBenchmarks.ServiceBus
+﻿using BenchmarkDotNet.Attributes;
+
+namespace MicroBenchmarks.ServiceBus;
+
+using System;
+using System.Runtime.InteropServices;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
+using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Jobs;
+
+[Config(typeof(Config))]
+public class GuidRead
 {
-    using System;
-    using System.Runtime.InteropServices;
-    using BenchmarkDotNet.Attributes;
-    using BenchmarkDotNet.Configs;
-    using BenchmarkDotNet.Diagnosers;
-    using BenchmarkDotNet.Exporters;
-    using BenchmarkDotNet.Jobs;
+    private byte[] scratchBuffer;
 
-    [Config(typeof(Config))]
-    public class GuidRead
+    private class Config : ManualConfig
     {
-        private byte[] scratchBuffer;
-
-        private class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                AddExporter(MarkdownExporter.GitHub);
-                AddDiagnoser(MemoryDiagnoser.Default);
-                AddJob(Job.Default.WithInvocationCount(9600000));
-            }
+            AddExporter(MarkdownExporter.GitHub);
+            AddDiagnoser(MemoryDiagnoser.Default);
+            AddJob(Job.Default.WithInvocationCount(9600000));
         }
-        [IterationSetup]
-        public void Setup()
+    }
+    [IterationSetup]
+    public void Setup()
+    {
+        scratchBuffer = Guid.NewGuid().ToByteArray();
+    }
+
+    [Benchmark(Baseline = true)]
+    public Guid Unsafe()
+    {
+        return ReadUuid(scratchBuffer);
+    }
+
+    static unsafe Guid ReadUuid(byte[] buffer)
+    {
+        Guid data;
+        fixed (byte* p = &buffer[0])
         {
-            scratchBuffer = Guid.NewGuid().ToByteArray();
-        }
+            byte* d = (byte*)&data;
+            d[0] = p[3];
+            d[1] = p[2];
+            d[2] = p[1];
+            d[3] = p[0];
 
-        [Benchmark(Baseline = true)]
-        public Guid Unsafe()
-        {
-            return ReadUuid(scratchBuffer);
-        }
+            d[4] = p[5];
+            d[5] = p[4];
 
-        static unsafe Guid ReadUuid(byte[] buffer)
-        {
-            Guid data;
-            fixed (byte* p = &buffer[0])
-            {
-                byte* d = (byte*)&data;
-                d[0] = p[3];
-                d[1] = p[2];
-                d[2] = p[1];
-                d[3] = p[0];
+            d[6] = p[7];
+            d[7] = p[6];
 
-                d[4] = p[5];
-                d[5] = p[4];
-
-                d[6] = p[7];
-                d[7] = p[6];
-
-                *((ulong*)&d[8]) = *((ulong*)&p[8]);
-            }
-
-            return data;
+            *((ulong*)&d[8]) = *((ulong*)&p[8]);
         }
 
-        [Benchmark]
-        public Guid Marshal()
-        {
-            return MemoryMarshal.Read<Guid>(scratchBuffer.AsSpan());
-        }
+        return data;
+    }
+
+    [Benchmark]
+    public Guid Marshal()
+    {
+        return MemoryMarshal.Read<Guid>(scratchBuffer.AsSpan());
     }
 }
