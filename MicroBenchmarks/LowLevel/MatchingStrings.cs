@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using BenchmarkDotNet.Attributes;
 
 namespace MicroBenchmarks.LowLevel;
@@ -7,14 +8,28 @@ namespace MicroBenchmarks.LowLevel;
 [MemoryDiagnoser]
 public class MatchingStrings
 {
+    private HashSet<string> exclusions;
+
     [Params("SomeAssembly.Dll", "SomeAssembly.Exe", "SomeAssembly")]
     public string Input { get; set; }
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        exclusions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "someassembly"
+        };
+    }
 
     [Benchmark(Baseline = true)]
     public bool MatchOriginal() => IsMatch(Input, Input);
     
     [Benchmark]
     public bool MatchOptimized() => IsMatch2(Input, Input);
+    
+    [Benchmark]
+    public bool MatchOptimizedHashSet() => exclusions.Contains(Input);
     
     static bool IsMatch2(string expression1, string expression2)
         => string.Equals(RemoveExtensionIfNecessary(expression1),RemoveExtensionIfNecessary(expression2), StringComparison.OrdinalIgnoreCase);
