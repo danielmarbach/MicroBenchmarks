@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net6</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <DebugType>pdbonly</DebugType>
         <DebugSymbols>true</DebugSymbols>
@@ -9,13 +9,13 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="BenchmarkDotNet" Version="0.13.1" />
+        <PackageReference Include="BenchmarkDotNet" Version="0.13.8" />
         <PackageReference Include="FastExpressionCompiler.Internal.src" Version="3.2.1" />
         <PackageReference Include="FastHashes" Version="1.7.5" />
         <PackageReference Include="Microsoft.Azure.Amqp" Version="2.4.11" />
         <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="2.2.0" />
         <PackageReference Include="System.Buffers" Version="4.5.1" />
-        <PackageReference Include="System.Memory" Version="4.5.3" />
+        <PackageReference Include="System.Memory" Version="4.5.4" />
         <PackageReference Include="System.Data.HashFunction.FarmHash" Version="2.0.0" />
         <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
         <PackageReference Include="System.Memory.Data" Version="1.0.1" />
