@@ -14,11 +14,11 @@ public class RoutingKey
 {
     [Benchmark(Baseline = true)]
     [ArgumentsSource(nameof(Arguments))]
-    public string Before(int delay, string address) => CalculateRoutingKeyOld(10, "some-address", out _);
+    public string Before(int delay, string address) => CalculateRoutingKeyNew(10, "some-address", out _);
     
     [Benchmark]
     [ArgumentsSource(nameof(Arguments))]
-    public string After(int delay, string address) => CalculateRoutingKeyNew(10, "some-address", out _);
+    public string After(int delay, string address) => CalculateRoutingKeyNewV2(10, "some-address", out _);
     
     public IEnumerable<object[]> Arguments()
     {
@@ -88,6 +88,47 @@ public class RoutingKey
                     }
 
                     span[index++] = flag ? '1' : '0';
+                    span[index++] = '.';
+                }
+
+                address.AsSpan().CopyTo(span[index..]);
+
+                Unsafe.Write(startingDelayLevelPtr.ToPointer(), startingDelayLevel);
+            }
+        }
+    }
+
+    public static unsafe string CalculateRoutingKeyNewV2(int delayInSeconds, string address, out int startingDelayLevel)
+    {
+        if (delayInSeconds < 0)
+        {
+            delayInSeconds = 0;
+        }
+
+        startingDelayLevel = 0;
+
+        fixed (int* startingDelayLevelPtr = &startingDelayLevel)
+        {
+            var addr = (IntPtr)startingDelayLevelPtr;
+
+            return string.Create((2 * MaxLevel) + 2 + address.Length, (address, delayInSeconds, addr), Action);
+
+            static void Action(Span<char> span, (string address, int, IntPtr) state)
+            {
+                var (address, delayInSeconds, startingDelayLevelPtr) = state;
+
+                var startingDelayLevel = 0;
+
+                var index = 0;
+                for (var level = MaxLevel; level >= 0; level--)
+                {
+                    bool bitSet = ((delayInSeconds >> level) & 1) != 0;
+                    if (startingDelayLevel == 0 && bitSet)
+                    {
+                        startingDelayLevel = level;
+                    }
+
+                    span[index++] = bitSet ? '1' : '0';
                     span[index++] = '.';
                 }
 

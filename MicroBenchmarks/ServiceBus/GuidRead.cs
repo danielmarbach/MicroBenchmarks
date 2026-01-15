@@ -1,12 +1,11 @@
-﻿using BenchmarkDotNet.Attributes;
-
-namespace MicroBenchmarks.ServiceBus;
+﻿namespace MicroBenchmarks.ServiceBus;
 
 using System;
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
+using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
-using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 
 [Config(typeof(Config))]
@@ -14,15 +13,6 @@ public class GuidRead
 {
     private byte[] scratchBuffer;
 
-    private class Config : ManualConfig
-    {
-        public Config()
-        {
-            AddExporter(MarkdownExporter.GitHub);
-            AddDiagnoser(MemoryDiagnoser.Default);
-            AddJob(Job.Default.WithInvocationCount(9600000));
-        }
-    }
     [IterationSetup]
     public void Setup()
     {
@@ -30,37 +20,58 @@ public class GuidRead
     }
 
     [Benchmark(Baseline = true)]
-    public Guid Unsafe()
+    public Guid Primitives()
     {
-        return ReadUuid(scratchBuffer);
-    }
-
-    static unsafe Guid ReadUuid(byte[] buffer)
-    {
-        Guid data;
-        fixed (byte* p = &buffer[0])
-        {
-            byte* d = (byte*)&data;
-            d[0] = p[3];
-            d[1] = p[2];
-            d[2] = p[1];
-            d[3] = p[0];
-
-            d[4] = p[5];
-            d[5] = p[4];
-
-            d[6] = p[7];
-            d[7] = p[6];
-
-            *((ulong*)&d[8]) = *((ulong*)&p[8]);
-        }
-
-        return data;
+        var scratchBufferSpan = scratchBuffer.AsSpan();
+        var a = BinaryPrimitives.ReadInt32BigEndian(scratchBufferSpan);
+        var b = BinaryPrimitives.ReadInt16BigEndian(scratchBufferSpan.Slice(4, 2));
+        var c = BinaryPrimitives.ReadInt16BigEndian(scratchBufferSpan.Slice(6, 2));
+        var pos = 0;
+        var d = scratchBufferSpan[pos++];
+        var e = scratchBufferSpan[pos++];
+        var f = scratchBufferSpan[pos++];
+        var g = scratchBufferSpan[pos++];
+        var h = scratchBufferSpan[pos++];
+        var i = scratchBufferSpan[pos++];
+        var j = scratchBufferSpan[pos++];
+        var k = scratchBufferSpan[pos++];
+        return new Guid(a, b, c, d, e, f, g, h, i, j, k);
     }
 
     [Benchmark]
-    public Guid Marshal()
+    public Guid MarshalBigEndian()
     {
-        return MemoryMarshal.Read<Guid>(scratchBuffer.AsSpan());
+        var bigEndianSpan = scratchBuffer.AsSpan();
+        Span<byte> guidBytes = stackalloc byte[16];
+
+        if (BitConverter.IsLittleEndian)
+        {
+            BinaryPrimitives.WriteInt32LittleEndian(guidBytes.Slice(0, 4),
+                BinaryPrimitives.ReadInt32BigEndian(bigEndianSpan.Slice(0, 4)));
+
+            BinaryPrimitives.WriteInt16LittleEndian(guidBytes.Slice(4, 2),
+                BinaryPrimitives.ReadInt16BigEndian(bigEndianSpan.Slice(4, 2)));
+
+            BinaryPrimitives.WriteInt16LittleEndian(guidBytes.Slice(6, 2),
+                BinaryPrimitives.ReadInt16BigEndian(bigEndianSpan.Slice(6, 2)));
+
+            bigEndianSpan.Slice(8, 8).CopyTo(guidBytes.Slice(8, 8));
+        }
+        else
+        {
+            bigEndianSpan.CopyTo(guidBytes);
+        }
+
+        // Now safe to read Guid directly from guidBytes buffer
+        return MemoryMarshal.Read<Guid>(guidBytes);
+    }
+
+    private class Config : ManualConfig
+    {
+        public Config()
+        {
+            AddDiagnoser(MemoryDiagnoser.Default);
+            AddJob(Job.Default.WithInvocationCount(96000000));
+        }
     }
 }

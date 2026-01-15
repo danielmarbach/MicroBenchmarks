@@ -25,6 +25,55 @@ public class DeserializeMessageConnector
         {
             AddExporter(MarkdownExporter.GitHub);
             AddDiagnoser(MemoryDiagnoser.Default);
+            AddJob(Job.Default);
+        }
+    }
+
+    [GlobalSetup]
+    public void SetUp()
+    {
+        consumer = new Consumer();
+        registry = new MessageMetadataRegistry();
+        headers = new Dictionary<string, string>[120];
+        for (var i = 0; i < 120; i++)
+        {
+            headers[i] = new Dictionary<string, string>
+            {
+                {
+                    Headers.EnclosedMessageTypes,
+                    $"Shipping.OrderAccepted{i}, Shared{i}, Version=1.0.0.0, Culture=neutral, PublicKeyToken=XYZ;Shipping.IOrderAccepted{i}, Shared{i}, Version=1.0.0.0, Culture=neutral, PublicKeyToken=XYZ;Shipping.IOrderStatusChanged{i}, Shared{i}, Version=1.0.0.0, Culture=neutral, PublicKeyToken=XYZ"
+                }
+            };
+        }
+    }
+
+    [Benchmark(Baseline = true)]
+    public Type[] Before()
+    {
+        return ConnectorSimulator.Before(headers[1], false, registry);
+    }
+
+    [Benchmark]
+    public Type[] After()
+    {
+        return ConnectorSimulator.After(headers[1], false, registry);
+    }
+}
+
+
+[Config(typeof(Config))]
+public class DeserializeMessageConnectorCalls
+{
+    private Consumer consumer;
+    private MessageMetadataRegistry registry;
+    private Dictionary<string, string>[] headers;
+
+    private class Config : ManualConfig
+    {
+        public Config()
+        {
+            AddExporter(MarkdownExporter.GitHub);
+            AddDiagnoser(MemoryDiagnoser.Default);
             AddJob(Job.ShortRun);
         }
     }
@@ -59,7 +108,7 @@ public class DeserializeMessageConnector
             consumer.Consume(types);
         }
     }
-        
+
     [Benchmark]
     public void After()
     {
@@ -70,7 +119,7 @@ public class DeserializeMessageConnector
         }
     }
 }
-    
+
 [Config(typeof(Config))]
 public class DeserializeMessageConnectorConcurrent
 {
@@ -176,52 +225,52 @@ class MessageMetadataRegistry
     
 static class ConnectorSimulator
 {
-    public static List<Type> Before(Dictionary<string, string> headers, bool allowContentTypeInference, MessageMetadataRegistry messageMetadataRegistry)
-    {
-        var messageMetadata = new List<MessageMetadata>();
+    // public static List<Type> Before(Dictionary<string, string> headers, bool allowContentTypeInference, MessageMetadataRegistry messageMetadataRegistry)
+    // {
+    //     var messageMetadata = new List<MessageMetadata>();
+    //
+    //     if (headers.TryGetValue(Headers.EnclosedMessageTypes, out var messageTypeIdentifier))
+    //     {
+    //         foreach (var messageTypeString in messageTypeIdentifier.Split(EnclosedMessageTypeSeparator))
+    //         {
+    //             var typeString = messageTypeString;
+    //
+    //             if (DoesTypeHaveImplAddedByVersion3Before(typeString))
+    //             {
+    //                 continue;
+    //             }
+    //
+    //             var metadata = messageMetadataRegistry.GetMessageMetadata(typeString);
+    //
+    //             if (metadata == null)
+    //             {
+    //                 continue;
+    //             }
+    //
+    //             messageMetadata.Add(metadata);
+    //         }
+    //
+    //         if (messageMetadata.Count == 0 && allowContentTypeInference)
+    //         {
+    //             Console.WriteLine("Could not determine message type from message header '{0}'. MessageId: {1}", messageTypeIdentifier);
+    //         }
+    //     }
+    //
+    //     if (messageMetadata.Count == 0 && !allowContentTypeInference)
+    //     {
+    //         throw new Exception($"Could not determine the message type from the '{Headers.EnclosedMessageTypes}' header and message type inference from the message body has been disabled. Ensure the header is set or enable message type inference.");
+    //     }
+    //
+    //     var messageTypes = messageMetadata.Select(metadata => metadata.MessageType).ToList();
+    //     return messageTypes;
+    // }
+    //
+    // static bool DoesTypeHaveImplAddedByVersion3Before(string existingTypeString)
+    // {
+    //     return existingTypeString.Contains("__impl");
+    // }
 
-        if (headers.TryGetValue(Headers.EnclosedMessageTypes, out var messageTypeIdentifier))
-        {   
-            foreach (var messageTypeString in messageTypeIdentifier.Split(EnclosedMessageTypeSeparator))
-            {
-                var typeString = messageTypeString;
-
-                if (DoesTypeHaveImplAddedByVersion3Before(typeString))
-                {
-                    continue;
-                }
-
-                var metadata = messageMetadataRegistry.GetMessageMetadata(typeString);
-
-                if (metadata == null)
-                {
-                    continue;
-                }
-
-                messageMetadata.Add(metadata);
-            }
-
-            if (messageMetadata.Count == 0 && allowContentTypeInference)
-            {
-                Console.WriteLine("Could not determine message type from message header '{0}'. MessageId: {1}", messageTypeIdentifier);
-            }
-        }
-
-        if (messageMetadata.Count == 0 && !allowContentTypeInference)
-        {
-            throw new Exception($"Could not determine the message type from the '{Headers.EnclosedMessageTypes}' header and message type inference from the message body has been disabled. Ensure the header is set or enable message type inference.");
-        }
-
-        var messageTypes = messageMetadata.Select(metadata => metadata.MessageType).ToList();
-        return messageTypes;
-    }
-        
-    static bool DoesTypeHaveImplAddedByVersion3Before(string existingTypeString)
-    {
-        return existingTypeString.Contains("__impl");
-    }
-
-    public static Type[] After(Dictionary<string, string> headers, bool allowContentTypeInference, MessageMetadataRegistry messageMetadataRegistry)
+    public static Type[] Before(Dictionary<string, string> headers, bool allowContentTypeInference, MessageMetadataRegistry messageMetadataRegistry)
     {
         Type[] messageTypes = Array.Empty<Type>();
         if (headers.TryGetValue(Headers.EnclosedMessageTypes, out var messageTypeIdentifier))
@@ -234,7 +283,7 @@ static class ConnectorSimulator
                     for (var index = 0; index < messageTypeStrings.Length; index++)
                     {
                         string messageTypeString = messageTypeStrings[index];
-                        if (DoesTypeHaveImplAddedByVersion3After(messageTypeString))
+                        if (DoesTypeHaveImplAddedByVersion3Before(messageTypeString))
                         {
                             continue;
                         }
@@ -267,8 +316,63 @@ static class ConnectorSimulator
         return messageTypes;
     }
         
-    static bool DoesTypeHaveImplAddedByVersion3After(string existingTypeString) => existingTypeString.AsSpan().IndexOf("__impl".AsSpan()) != -1;
-        
+    static bool DoesTypeHaveImplAddedByVersion3Before(string existingTypeString) => existingTypeString.AsSpan().IndexOf("__impl".AsSpan()) != -1;
+
+    public static Type[] After(Dictionary<string, string> headers, bool allowContentTypeInference, MessageMetadataRegistry messageMetadataRegistry)
+    {
+        Type[] messageTypes = [];
+        if (headers.TryGetValue(Headers.EnclosedMessageTypes, out var messageTypeIdentifier))
+        {
+            messageTypes = enclosedMessageTypesStringToMessageTypes.GetOrAdd(messageTypeIdentifier,
+                (key, registry) =>
+                {
+                    ReadOnlySpan<char> readOnlySpan = key.AsSpan();
+                    var numberOfSemicolons = readOnlySpan.Count(';');
+                    if (numberOfSemicolons == 0)
+                    {
+                        numberOfSemicolons = 1;
+                    }
+                    Span<Range> ranges = numberOfSemicolons < 128 ? stackalloc Range[numberOfSemicolons] : new Range[numberOfSemicolons];
+                    var numberOfSplitElements = readOnlySpan.Split(ranges, ';');
+                    var types = new List<Type>(numberOfSplitElements);
+                    foreach (var range in ranges[..numberOfSplitElements])
+                    {
+                        var potentialType = readOnlySpan[range];
+                        if (DoesTypeHaveImplAddedByVersion3After(potentialType))
+                        {
+                            continue;
+                        }
+
+                        var metadata = registry.GetMessageMetadata(potentialType.ToString());
+
+                        if (metadata == null)
+                        {
+                            continue;
+                        }
+
+                        types.Add(metadata.MessageType);
+                    }
+
+                    // using an array in order to be able to assign array empty as the default value
+                    return [.. types];
+                }, messageMetadataRegistry);
+
+            if (messageTypes.Length == 0 && allowContentTypeInference)
+            {
+                Console.WriteLine("Could not determine message type from message header '{0}'. MessageId: {1}", messageTypeIdentifier);
+            }
+        }
+
+        if (messageTypes.Length == 0 && !allowContentTypeInference)
+        {
+            throw new Exception($"Could not determine the message type from the '{Headers.EnclosedMessageTypes}' header and message type inference from the message body has been disabled. Ensure the header is set or enable message type inference.");
+        }
+
+        return messageTypes;
+    }
+
+    static bool DoesTypeHaveImplAddedByVersion3After(ReadOnlySpan<char> existingTypeString) => existingTypeString.IndexOf("__impl".AsSpan()) != -1;
+
     static readonly ConcurrentDictionary<string, Type[]> enclosedMessageTypesStringToMessageTypes =
         new ConcurrentDictionary<string, Type[]>();
         
