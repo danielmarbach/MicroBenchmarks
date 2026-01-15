@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Data.HashFunction;
 using System.Data.HashFunction.FarmHash;
 using System.Security.Cryptography;
 using System.Text;
