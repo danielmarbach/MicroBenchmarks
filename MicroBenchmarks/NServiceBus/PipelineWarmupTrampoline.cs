@@ -1,5 +1,7 @@
+using System.Linq;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Engines;
 using BenchmarkDotNet.Order;
 
 namespace MicroBenchmarks.NServiceBus;
@@ -7,13 +9,12 @@ namespace MicroBenchmarks.NServiceBus;
 [SimpleJob]
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Alphabetical)]
+// This benchmark is not entirely fair since the trampoline pipeline does not have the overhead of the initial pipeline warmup with expression trees and currently doesn't do coordination that's why it brings in fake coordination
 public class PipelineWarmupTrampoline
 {
-    private Trampoline.BehaviorContext behaviorContextTrampoline;
     private PipelineModifications currentPipelineModifications;
-    private PipelineAfterOptimizationsUnsafeAndMemoryMarshal<IBehaviorContext> currentPipeline;
     private BehaviorContext behaviorContextCurrent;
-    private Trampoline.PipelinePart[] trampolineParts;
+    private Consumer consumer;
 
     [Params(10, 20, 40)]
     public int PipelineDepth { get; set; }
@@ -21,6 +22,7 @@ public class PipelineWarmupTrampoline
     [GlobalSetup]
     public void SetUp()
     {
+        consumer = new Consumer();
         behaviorContextCurrent = new BehaviorContext();
 
         currentPipelineModifications = new PipelineModifications();
@@ -29,33 +31,42 @@ public class PipelineWarmupTrampoline
             currentPipelineModifications.Additions.Add(RegisterStep.Create(i.ToString(),
                 typeof(Behavior1SealedOptimization), i.ToString(), b => new Behavior1SealedOptimization()));
         }
-
-        currentPipeline = new PipelineAfterOptimizationsUnsafeAndMemoryMarshal<IBehaviorContext>(null, new SettingsHolder(),
-            currentPipelineModifications);
-
-        var trampolineBehaviors = new IBehavior[PipelineDepth];
-        trampolineParts = new Trampoline.PipelinePart[PipelineDepth];
-        for (var i = 0; i < PipelineDepth; i++)
-        {
-            trampolineBehaviors[i] = new Trampoline.BehaviorTrampoline();
-            trampolineParts[i] = new Trampoline.BehaviorTrampolinePart(i);
-        }
-
-        behaviorContextTrampoline = new Trampoline.BehaviorContext
-        {
-            Behaviors =  trampolineBehaviors,
-        };
     }
 
     [Benchmark(Baseline = true)]
     public async Task Current()
     {
+        var currentPipeline = new PipelineAfterOptimizationsUnsafeAndMemoryMarshal<IBehaviorContext>(null, new SettingsHolder(),
+            currentPipelineModifications);
         await currentPipeline.Invoke(behaviorContextCurrent).ConfigureAwait(false);
     }
 
     [Benchmark]
     public async Task Trampo()
     {
+        var trampolineBehaviors = new IBehavior[PipelineDepth];
+        var trampolineParts = new Trampoline.PipelinePart[PipelineDepth];
+        for (var i = 0; i < PipelineDepth; i++)
+        {
+            trampolineBehaviors[i] = new Trampoline.BehaviorTrampoline();
+            trampolineParts[i] = new Trampoline.BehaviorTrampolinePart(i);
+        }
+
+        var behaviorContextTrampoline = new Trampoline.BehaviorContext
+        {
+            Behaviors =  trampolineBehaviors,
+        };
+
+        var coordinator = new StepRegistrationsCoordinator(currentPipelineModifications.Removals,
+            currentPipelineModifications.Replacements);
+
+        foreach (var rego in currentPipelineModifications.Additions.Where(x => x.IsEnabled(new SettingsHolder())))
+        {
+            coordinator.Register(rego);
+        }
+
+        consumer.Consume(coordinator);
+
         await Trampoline.StageRunners.Start(behaviorContextTrampoline, trampolineParts);
     }
 
