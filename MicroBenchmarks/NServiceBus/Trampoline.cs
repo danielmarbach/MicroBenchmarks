@@ -136,6 +136,7 @@ public static class Trampoline
         [DebuggerHidden]
         [DebuggerNonUserCode]
         [StackTraceHidden]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Task Start(IBehaviorContext ctx, PipelinePart[] parts)
         {
             var frame = ctx.Frame;
@@ -151,6 +152,7 @@ public static class Trampoline
         [DebuggerHidden]
         [DebuggerNonUserCode]
         [StackTraceHidden]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Task Next(IBehaviorContext ctx)
         {
             var f = ctx.Frame;
@@ -165,6 +167,7 @@ public static class Trampoline
         [DebuggerHidden]
         [DebuggerNonUserCode]
         [StackTraceHidden]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static Task Complete(IBehaviorContext ctx)
         {
             var frame = ctx.Frame;
@@ -194,6 +197,7 @@ public static class Trampoline
         [DebuggerHidden]
         [DebuggerNonUserCode]
         [StackTraceHidden]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public sealed override Task Invoke(IBehaviorContext context)
         {
             var ctx = (TContext)context;
