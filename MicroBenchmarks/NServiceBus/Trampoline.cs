@@ -21,9 +21,10 @@ public static class Trampoline
 
     public sealed class ThrowingTrampoline : IBehavior<IBehaviorContext, IBehaviorContext>
     {
-        public Task Invoke(IBehaviorContext context, Func<IBehaviorContext, Task> next)
+        public async Task Invoke(IBehaviorContext context, Func<IBehaviorContext, Task> next)
         {
-            return Task.FromException(new InvalidOperationException());
+            await Task.Yield();
+            throw new InvalidOperationException();
         }
     }
 

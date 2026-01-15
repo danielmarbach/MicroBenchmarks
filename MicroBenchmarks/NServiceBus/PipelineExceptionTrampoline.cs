@@ -46,7 +46,7 @@ public class PipelineExceptionTrampoline
         }
 
         trampolineBehaviors[PipelineDepth] = new Throwing();
-        trampolineParts[PipelineDepth] = new Trampoline.BehaviorTrampolinePart(PipelineDepth);
+        trampolineParts[PipelineDepth] = new Trampoline.ThrowingTrampolinePart(PipelineDepth);
 
         behaviorContextTrampoline = new Trampoline.BehaviorContext
         {
@@ -103,9 +103,10 @@ public class PipelineExceptionTrampoline
 
     public sealed class Throwing : IBehavior<IBehaviorContext, IBehaviorContext>
     {
-        public Task Invoke(IBehaviorContext context, Func<IBehaviorContext, Task> next)
+        public async Task Invoke(IBehaviorContext context, Func<IBehaviorContext, Task> next)
         {
-            return Task.FromException(new InvalidOperationException());
+            await Task.Yield();
+            throw new InvalidOperationException();
         }
     }
 
