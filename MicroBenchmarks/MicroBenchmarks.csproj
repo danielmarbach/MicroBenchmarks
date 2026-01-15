@@ -16,5 +16,6 @@
         <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="2.2.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="System.Data.HashFunction.FarmHash" Version="2.0.0" />
+        <PackageReference Include="System.Memory.Data" Version="10.0.2" />
     </ItemGroup>
 </Project>

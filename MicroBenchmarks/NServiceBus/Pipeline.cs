@@ -20,9 +20,7 @@ public interface IBehavior<in TInContext, out TOutContext> : IBehavior
     Task Invoke(TInContext context, Func<TOutContext, Task> next);
 }
 
-public interface IBehavior
-{
-}
+public interface IBehavior;
 
 public class ContextBag
 {
@@ -417,7 +415,7 @@ static class BehaviorExtensionsFastExpressionCompilerAndBehaviorSmuggling
         for (var i = length; i >= 0; i--)
         {
             var currentBehavior = behaviors[i];
-            var behaviorInterfaceType = currentBehavior.GetType().GetInterfaces().FirstOrDefault(t => t.GetGenericArguments().Length == 2 && t.FullName.StartsWith("NServiceBus.Pipeline.IBehavior"));
+            var behaviorInterfaceType = currentBehavior.GetType().GetInterfaces().FirstOrDefault(t => t.GetGenericArguments().Length == 2 && t.FullName.StartsWith("MicroBenchmarks.NServiceBus.IBehavior"));
             if (behaviorInterfaceType == null)
             {
                 throw new InvalidOperationException("Behaviors must implement IBehavior<TInContext, TOutContext>");
@@ -580,7 +578,7 @@ static class BehaviorExtensionsFastExpressionCompilerAndBehaviorSmugglingAndUnsa
         for (var i = length; i >= 0; i--)
         {
             var currentBehavior = behaviors[i];
-            var behaviorInterfaceType = currentBehavior.GetType().GetInterfaces().FirstOrDefault(t => t.GetGenericArguments().Length == 2 && t.FullName.StartsWith("NServiceBus.Pipeline.IBehavior"));
+            var behaviorInterfaceType = currentBehavior.GetType().GetInterfaces().FirstOrDefault(t => t.GetGenericArguments().Length == 2 && t.FullName.StartsWith("MicroBenchmarks.NServiceBus.IBehavior"));
             if (behaviorInterfaceType == null)
             {
                 throw new InvalidOperationException("Behaviors must implement IBehavior<TInContext, TOutContext>");
