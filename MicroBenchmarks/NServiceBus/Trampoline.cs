@@ -30,11 +30,7 @@ public static class Trampoline
 
     public sealed class ThrowingTrampolinePart(int behaviorIndex) : BehaviorPart<IBehaviorContext, ThrowingTrampoline>(behaviorIndex);
 
-    public interface IBehaviorContext
-    {
-        // In Core this would move to extensions and not be exposed on the interface to public
-        PipelineFrame Frame { get; }
-    }
+    public interface IBehaviorContext;
 
     public class BehaviorContext : IBehaviorContext
     {
@@ -53,7 +49,7 @@ public static class Trampoline
         }
 
         internal IBehavior[] Behaviors { get; init; }
-        public PipelineFrame Frame { get; }
+        internal PipelineFrame Frame;
 
         [DebuggerNonUserCode]
         [DebuggerStepThrough]
@@ -75,13 +71,17 @@ public static class Trampoline
         private FrameSnapshot _element0;
     }
 
-    public sealed class PipelineFrame
+    public struct PipelineFrame
     {
         public PipelinePart[] Parts = [];
-        public int Index;
+        public int Index = 0;
 
-        private FrameStack stack;
-        private int stackDepth;
+        private FrameStack stack = default;
+        private int stackDepth = 0;
+
+        public PipelineFrame()
+        {
+        }
 
         // Should be verified whether those hints are still necessary
         [DebuggerNonUserCode]
@@ -121,8 +121,7 @@ public static class Trampoline
         }
 
         [DoesNotReturn]
-        private static void ThrowOverflow() =>
-            throw new InvalidOperationException($"Pipeline frame stack overflow. MaxDepth={FrameStack.MaxDepth}.");
+        private static void ThrowOverflow() => throw new InvalidOperationException($"Pipeline frame stack overflow. MaxDepth={FrameStack.MaxDepth}.");
     }
 
     public abstract class PipelinePart
@@ -139,7 +138,8 @@ public static class Trampoline
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Task Start(IBehaviorContext ctx, PipelinePart[] parts)
         {
-            var frame = ctx.Frame;
+            var context = Unsafe.As<BehaviorContext>(ctx);
+            scoped ref var frame = ref context.Frame;
             frame.Parts = parts;
             frame.Index = 0;
 
@@ -155,22 +155,22 @@ public static class Trampoline
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Task Next(IBehaviorContext ctx)
         {
-            var f = ctx.Frame;
-            var nextIndex = ++f.Index;
+            var context = Unsafe.As<BehaviorContext>(ctx);
+            scoped ref var frame = ref context.Frame;
+            var parts = frame.Parts;
+            var nextIndex = ++frame.Index;
 
-            return (uint)nextIndex < (uint)f.Parts.Length
-                ? Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(f.Parts), nextIndex).Invoke(ctx)
-                : Complete(ctx);
+            return (uint)nextIndex >= (uint)parts.Length ? Complete(ctx) : Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(parts), nextIndex).Invoke(ctx);
         }
 
         [DebuggerStepThrough]
         [DebuggerHidden]
         [DebuggerNonUserCode]
         [StackTraceHidden]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static Task Complete(IBehaviorContext ctx)
         {
-            var frame = ctx.Frame;
+            var context = Unsafe.As<BehaviorContext>(ctx);
+            scoped ref var frame = ref context.Frame;
             if (!frame.TryPop(out var frameSnapshot))
             {
                 return Task.CompletedTask;
@@ -193,6 +193,8 @@ public static class Trampoline
         where TContext : class, IBehaviorContext
         where TBehavior : class, IBehavior<TContext, TContext>
     {
+        private static readonly Func<TContext, Task> CachedNext = Next;
+
         [DebuggerStepThrough]
         [DebuggerHidden]
         [DebuggerNonUserCode]
@@ -202,7 +204,7 @@ public static class Trampoline
         {
             var ctx = (TContext)context;
             var behavior = Unsafe.As<BehaviorContext>(context).GetBehavior<TBehavior>(behaviorIndex);
-            return behavior.Invoke(ctx, Next);
+            return behavior.Invoke(ctx, CachedNext);
         }
 
         [DebuggerStepThrough]
@@ -225,7 +227,8 @@ public static class Trampoline
         [StackTraceHidden]
         public sealed override Task Invoke(IBehaviorContext context)
         {
-            var frame = context.Frame;
+            var ctx = Unsafe.As<BehaviorContext>(context);
+            scoped ref var frame = ref ctx.Frame;
 
             frame.Push(frame.Parts, frame.Index);
 
@@ -234,7 +237,7 @@ public static class Trampoline
 
             return childParts.Length == 0
                 ? StageRunners.Next(context)
-                : (context as BehaviorContext)!.GetBehavior<TBehavior>(stageIndex).Invoke((TInContext)context, Start);
+                : ctx.GetBehavior<TBehavior>(stageIndex).Invoke(Unsafe.As<TInContext>(context), Start);
         }
 
         [DebuggerStepThrough]
@@ -242,6 +245,11 @@ public static class Trampoline
         [DebuggerNonUserCode]
         [StackTraceHidden]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static Task Start(TOutContext ctx) => StageRunners.Start(ctx, ctx.Frame.Parts);
+        private static Task Start(TOutContext ctx)
+        {
+            var context = Unsafe.As<BehaviorContext>(ctx);
+            scoped ref var frame = ref context.Frame;
+            return StageRunners.Start(context, frame.Parts);
+        }
     }
 }
