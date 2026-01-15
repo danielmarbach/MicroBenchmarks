@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Engines;
@@ -49,7 +50,7 @@ public class PipelineWarmupTrampoline
         for (var i = 0; i < PipelineDepth; i++)
         {
             trampolineBehaviors[i] = new Trampoline.BehaviorTrampoline();
-            trampolineParts[i] = new Trampoline.BehaviorTrampolinePart(i);
+            trampolineParts[i] = new Trampoline.PipelinePart(Trampoline.Behavior, i);
         }
 
         var behaviorContextTrampoline = new Trampoline.BehaviorContext
