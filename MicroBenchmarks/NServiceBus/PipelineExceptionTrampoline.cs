@@ -42,11 +42,11 @@ public class PipelineExceptionTrampoline
         for (var i = 0; i < PipelineDepth; i++)
         {
             trampolineBehaviors[i] = new Trampoline.BehaviorTrampoline();
-            trampolineParts[i] = new Trampoline.BehaviorTrampolinePart(i);
+            trampolineParts[i] = new Trampoline.BehaviorTrampolinePart();
         }
 
         trampolineBehaviors[PipelineDepth] = new Throwing();
-        trampolineParts[PipelineDepth] = new Trampoline.ThrowingTrampolinePart(PipelineDepth);
+        trampolineParts[PipelineDepth] = new Trampoline.ThrowingTrampolinePart();
 
         behaviorContextTrampoline = new Trampoline.BehaviorContext
         {

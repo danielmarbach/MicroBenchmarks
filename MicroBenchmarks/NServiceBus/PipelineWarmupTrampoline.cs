@@ -49,7 +49,7 @@ public class PipelineWarmupTrampoline
         for (var i = 0; i < PipelineDepth; i++)
         {
             trampolineBehaviors[i] = new Trampoline.BehaviorTrampoline();
-            trampolineParts[i] = new Trampoline.BehaviorTrampolinePart(i);
+            trampolineParts[i] = new Trampoline.BehaviorTrampolinePart();
         }
 
         var behaviorContextTrampoline = new Trampoline.BehaviorContext
