@@ -48,7 +48,7 @@ public class PipelineExecutionTrampoline
 
         // warmup and cache
         currentPipeline.Invoke(behaviorContextCurrent).GetAwaiter().GetResult();
-        NServiceBus.Trampoline.StageRunners.Start(behaviorContextTrampoline, trampolineParts).GetAwaiter().GetResult();
+        Trampoline.StageRunners.Start(behaviorContextTrampoline, trampolineParts).GetAwaiter().GetResult();
     }
 
     [Benchmark(Baseline = true)]
