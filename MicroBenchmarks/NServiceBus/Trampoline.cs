@@ -46,8 +46,6 @@ public static class Trampoline
 
     public sealed class ThrowingTrampolinePart : BehaviorPart<IBehaviorContext, ThrowingTrampoline>;
 
-    public static readonly Func<IBehaviorContext, Task> CachedNext = StageRunners.Next;
-
     public interface IBehaviorContext;
 
     public class BehaviorContext : IBehaviorContext
@@ -120,6 +118,8 @@ public static class Trampoline
                 ? Task.CompletedTask
                 : Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(parts), nextIndex).Invoke(ctx);
         }
+
+        public static readonly Func<IBehaviorContext, Task> CachedNext = Next;
     }
 
     public interface IBehavior<in TInContext, out TOutContext> : IBehavior
@@ -141,7 +141,7 @@ public static class Trampoline
         {
             var ctx = Unsafe.As<BehaviorContext>(context);
             var behavior = ctx.GetBehavior<TBehavior>(ctx.CurrentIndex);
-            return behavior.Invoke(Unsafe.As<TContext>(context), CachedNext);
+            return behavior.Invoke(Unsafe.As<TContext>(context), StageRunners.CachedNext);
         }
     }
 
@@ -162,17 +162,7 @@ public static class Trampoline
             // Set the next stage start index so the cached delegate knows where to jump
             ctx.CurrentIndex = nextStageStartIndex - 1; // -1 because Next will increment
 
-            return behavior.Invoke(Unsafe.As<TInContext>(context), CachedNext);
-        }
-
-        [DebuggerStepThrough]
-        [DebuggerHidden]
-        [DebuggerNonUserCode]
-        [StackTraceHidden]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static Task StartNextStage(TOutContext ctx)
-        {
-            return StageRunners.Next(ctx);
+            return behavior.Invoke(Unsafe.As<TInContext>(context), StageRunners.CachedNext);
         }
     }
 }
