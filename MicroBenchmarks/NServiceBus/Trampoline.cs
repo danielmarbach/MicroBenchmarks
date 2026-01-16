@@ -19,6 +19,22 @@ public static class Trampoline
 
     public sealed class BehaviorTrampolinePart : BehaviorPart<IBehaviorContext, BehaviorTrampoline>;
 
+    // public sealed class BehaviorTrampolinePart : PipelinePart
+    // {
+    //     [DebuggerStepThrough]
+    //     [DebuggerHidden]
+    //     [DebuggerNonUserCode]
+    //     [StackTraceHidden]
+    //     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    //     public sealed override Task Invoke(IBehaviorContext context)
+    //     {
+    //         var ctx = Unsafe.As<BehaviorContext>(context);
+    //         var behavior = ctx.GetBehavior<BehaviorTrampoline>(ctx.CurrentIndex);
+    //         // cast remains here because in real code we would need it too
+    //         return behavior.Invoke(Unsafe.As<IBehaviorContext>(context), CachedNext);
+    //     }
+    // }
+
     public sealed class ThrowingTrampoline : IBehavior<IBehaviorContext, IBehaviorContext>
     {
         public async Task Invoke(IBehaviorContext context, Func<IBehaviorContext, Task> next)
