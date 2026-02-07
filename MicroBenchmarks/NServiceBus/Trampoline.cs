@@ -145,7 +145,10 @@ public static class Trampoline
         private static void ThrowOverflow() => throw new InvalidOperationException($"Pipeline frame stack overflow. MaxDepth={FrameStack.MaxDepth}.");
     }
 
-    public readonly record struct PipelinePart(Func<IBehaviorContext, int, PipelinePart[], Task> Invoke, int BehaviorIndex, PipelinePart[]? ChildParts = null);
+    public readonly record struct PipelinePart(
+        Func<IBehaviorContext, int, PipelinePart[], Task> Invoke,  // 8 bytes
+        PipelinePart[]? ChildParts,                                 // 8 bytes
+        int BehaviorIndex);                                         // 4 bytes (+ 4 padding)
 
     public static class StageRunners
     {
