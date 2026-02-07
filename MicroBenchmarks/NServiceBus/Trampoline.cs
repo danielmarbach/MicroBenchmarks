@@ -9,7 +9,6 @@ namespace MicroBenchmarks.NServiceBus;
 
 public static class Trampoline
 {
-    // if we can generate this for every behavior we win
     [DebuggerStepThrough]
     [DebuggerHidden]
     [DebuggerNonUserCode]
@@ -19,11 +18,8 @@ public static class Trampoline
     {
         var context = Unsafe.As<BehaviorContext>(ctx);
         var behavior = context.GetBehavior<BehaviorTrampoline>(index);
-        return behavior.Invoke(ctx, CachedNext);
+        return behavior.Invoke(ctx, StageRunners.Next);
     }
-
-    // This is crucial! We need a cached delegate for each stage
-    static readonly Func<IBehaviorContext, Task> CachedNext = StageRunners.Next;
 
     public sealed class BehaviorTrampoline : IBehavior<IBehaviorContext, IBehaviorContext>
     {
@@ -42,7 +38,7 @@ public static class Trampoline
     {
         var context = Unsafe.As<BehaviorContext>(ctx);
         var behavior = context.GetBehavior<ThrowingTrampoline>(index);
-        return behavior.Invoke(ctx, CachedNext);
+        return behavior.Invoke(ctx, StageRunners.Next);
     }
 
     public sealed class ThrowingTrampoline : IBehavior<IBehaviorContext, IBehaviorContext>
@@ -63,20 +59,17 @@ public static class Trampoline
             if (parent is BehaviorContext parentContext)
             {
                 Behaviors = parentContext.Behaviors;
-                Parts = parentContext.Parts;
-                CurrentIndex = parentContext.CurrentIndex;
+                Frame = parentContext.Frame;
             }
             else
             {
                 Behaviors = [];
-                Parts = [];
-                CurrentIndex = 0;
+                Frame = new PipelineFrame();
             }
         }
 
         internal IBehavior[] Behaviors { get; init; }
-        internal PipelinePart[] Parts;
-        internal int CurrentIndex;
+        internal PipelineFrame Frame;
 
         [DebuggerNonUserCode]
         [DebuggerStepThrough]
@@ -88,9 +81,71 @@ public static class Trampoline
                 Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(Behaviors), index));
     }
 
-    public readonly record struct PipelinePart(
-        Func<IBehaviorContext, int, PipelinePart[], Task> Invoke,
-        int NextStageStartIndex = -1);
+    public readonly record struct FrameSnapshot(PipelinePart[] Parts, int Index);
+
+    [InlineArray(MaxDepth)]
+    public struct FrameStack
+    {
+        public const int MaxDepth = 8; // this is well known
+
+        private FrameSnapshot _element0;
+    }
+
+    [SkipLocalsInit]
+    public struct PipelineFrame
+    {
+        public PipelinePart[] Parts = [];
+        public int Index = 0;
+
+        private FrameStack stack = default;
+        private int stackDepth = 0;
+
+        public PipelineFrame()
+        {
+        }
+
+        // Should be verified whether those hints are still necessary
+        [DebuggerNonUserCode]
+        [DebuggerStepThrough]
+        [DebuggerHidden]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Push(PipelinePart[] parts, int index)
+        {
+            var d = stackDepth;
+            if ((uint)d >= FrameStack.MaxDepth)
+            {
+                ThrowOverflow();
+            }
+
+            stack[d] = new FrameSnapshot(parts, index);
+            stackDepth = d + 1;
+        }
+
+        [DebuggerNonUserCode]
+        [DebuggerStepThrough]
+        [DebuggerHidden]
+        // Should be verified whether those hints are still necessary
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryPop(out FrameSnapshot snapshot)
+        {
+            var d = stackDepth;
+            if (d == 0)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            d--;
+            snapshot = stack[d];
+            stackDepth = d;
+            return true;
+        }
+
+        [DoesNotReturn]
+        private static void ThrowOverflow() => throw new InvalidOperationException($"Pipeline frame stack overflow. MaxDepth={FrameStack.MaxDepth}.");
+    }
+
+    public readonly record struct PipelinePart(Func<IBehaviorContext, int, PipelinePart[], Task> Invoke, int BehaviorIndex, PipelinePart[]? ChildParts = null);
 
     public static class StageRunners
     {
@@ -102,16 +157,17 @@ public static class Trampoline
         public static Task Start(IBehaviorContext ctx, PipelinePart[] parts)
         {
             var context = Unsafe.As<BehaviorContext>(ctx);
-            context.Parts = parts;
-            context.CurrentIndex = 0;
+            scoped ref var frame = ref context.Frame;
+            frame.Parts = parts;
+            frame.Index = 0;
 
             if (parts.Length == 0)
             {
-                return Task.CompletedTask;
+                return Complete(ctx);
             }
 
-            scoped ref var part = ref MemoryMarshal.GetArrayDataReference(parts);
-            return part.Invoke(ctx, 0, parts);
+            scoped ref var part = ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(parts), 0);
+            return part.Invoke(ctx, part.BehaviorIndex, part.ChildParts ?? []);
         }
 
         [DebuggerStepThrough]
@@ -122,80 +178,36 @@ public static class Trampoline
         public static Task Next(IBehaviorContext ctx)
         {
             var context = Unsafe.As<BehaviorContext>(ctx);
-            var parts = context.Parts;
-            var nextIndex = ++context.CurrentIndex;
+            scoped ref var frame = ref context.Frame;
+            var parts = frame.Parts;
+            var nextIndex = ++frame.Index;
 
             if ((uint)nextIndex >= (uint)parts.Length)
+            {
+                return Complete(ctx);
+            }
+
+            scoped ref var part = ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(parts), nextIndex);
+            return part.Invoke(ctx, part.BehaviorIndex, part.ChildParts ?? []);
+        }
+
+        [DebuggerStepThrough]
+        [DebuggerHidden]
+        [DebuggerNonUserCode]
+        [StackTraceHidden]
+        static Task Complete(IBehaviorContext ctx)
+        {
+            var context = Unsafe.As<BehaviorContext>(ctx);
+            scoped ref var frame = ref context.Frame;
+            if (!frame.TryPop(out var frameSnapshot))
             {
                 return Task.CompletedTask;
             }
 
-            scoped ref var part = ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(parts), nextIndex);
-            return part.Invoke(ctx, nextIndex, parts);
-        }
-    }
+            frame.Parts = frameSnapshot.Parts;
+            frame.Index = frameSnapshot.Index;
 
-    // This seems more inlineable
-    public static class Invoker
-    {
-        [DebuggerStepThrough]
-        [DebuggerHidden]
-        [DebuggerNonUserCode]
-        [StackTraceHidden]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Task Invoke<TContext, TBehavior>(IBehaviorContext context, int index, PipelinePart[] parts)
-            where TContext : class, IBehaviorContext
-            where TBehavior : class, IBehavior<TContext, TContext>
-        {
-            var ctx = Unsafe.As<BehaviorContext>(context);
-            var behavior = ctx.GetBehavior<TBehavior>(index);
-            return behavior.Invoke(Unsafe.As<TContext>(context), CachedNext);
-        }
-    }
-
-    public static class BehaviorPart<TContext, TBehavior>
-        where TContext : class, IBehaviorContext
-        where TBehavior : class, IBehavior<TContext, TContext>
-    {
-        [DebuggerStepThrough]
-        [DebuggerHidden]
-        [DebuggerNonUserCode]
-        [StackTraceHidden]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Task Invoke(IBehaviorContext context, int index, PipelinePart[] parts)
-        {
-            var ctx = Unsafe.As<BehaviorContext>(context);
-            var behavior = ctx.GetBehavior<TBehavior>(index);
-            return behavior.Invoke(Unsafe.As<TContext>(context), CachedNext);
-        }
-    }
-
-    /// <summary>
-    /// Stage transition part. The nextStageStartIndex is stored in the PipelinePart struct.
-    /// </summary>
-    public static class StagePart<TInContext, TOutContext, TBehavior>
-        where TInContext : class, IBehaviorContext
-        where TOutContext : class, IBehaviorContext
-        where TBehavior : class, IBehavior<TInContext, TOutContext>
-    {
-        private static readonly Func<TOutContext, Task> CachedNext = StageRunners.Next;
-
-        [DebuggerStepThrough]
-        [DebuggerHidden]
-        [DebuggerNonUserCode]
-        [StackTraceHidden]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Task Invoke(IBehaviorContext context, int index, PipelinePart[] parts)
-        {
-            var ctx = Unsafe.As<BehaviorContext>(context);
-            var behavior = ctx.GetBehavior<TBehavior>(index);
-
-            // Get the next stage start index from the current part
-            scoped ref var currentPart = ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(parts), index);
-            // Set the index to nextStageStartIndex - 1 because Next will increment
-            ctx.CurrentIndex = currentPart.NextStageStartIndex - 1;
-
-            return behavior.Invoke(Unsafe.As<TInContext>(context), CachedNext);
+            return Next(ctx);
         }
     }
 
