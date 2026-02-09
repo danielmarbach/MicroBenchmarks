@@ -42,15 +42,16 @@ public class PipelineExceptionTrampoline
         for (var i = 0; i < PipelineDepth; i++)
         {
             trampolineBehaviors[i] = new Trampoline.BehaviorTrampoline();
-            trampolineParts[i] = new Trampoline.PipelinePart(Trampoline.Behavior, [], i);
+            trampolineParts[i] =  Trampoline.BehaviorPartFactory.Create<Trampoline.IBehaviorContext, Trampoline.BehaviorTrampoline>();
         }
 
         trampolineBehaviors[PipelineDepth] = new Throwing();
-        trampolineParts[PipelineDepth] = new Trampoline.PipelinePart(Trampoline.Throwing, [], PipelineDepth);
+        trampolineParts[PipelineDepth] = Trampoline.BehaviorPartFactory.Create<Trampoline.IBehaviorContext, Trampoline.ThrowingTrampoline>();
 
         behaviorContextTrampoline = new Trampoline.BehaviorContext
         {
             Behaviors =  trampolineBehaviors,
+            Parts =  trampolineParts
         };
 
         // warmup and cache
@@ -64,7 +65,7 @@ public class PipelineExceptionTrampoline
 
         try
         {
-            Trampoline.StageRunners.Start(behaviorContextTrampoline, trampolineParts).GetAwaiter().GetResult();
+            Trampoline.StageRunners.Start(behaviorContextTrampoline).GetAwaiter().GetResult();
         }
         catch (Exception e)
         {
@@ -91,7 +92,7 @@ public class PipelineExceptionTrampoline
     {
         try
         {
-            await Trampoline.StageRunners.Start(behaviorContextTrampoline, trampolineParts);
+            await Trampoline.StageRunners.Start(behaviorContextTrampoline);
         }
         catch (Exception e)
         {

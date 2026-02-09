@@ -38,17 +38,18 @@ public class PipelineExecutionTrampoline
         for (var i = 0; i < PipelineDepth; i++)
         {
             trampolineBehaviors[i] = new Trampoline.BehaviorTrampoline();
-            trampolineParts[i] = new Trampoline.PipelinePart(Trampoline.Behavior, [], i);
+            trampolineParts[i] = Trampoline.BehaviorPartFactory.Create<Trampoline.IBehaviorContext, Trampoline.BehaviorTrampoline>();
         }
 
         behaviorContextTrampoline = new Trampoline.BehaviorContext
         {
             Behaviors =  trampolineBehaviors,
+            Parts = trampolineParts,
         };
 
         // warmup and cache
         currentPipeline.Invoke(behaviorContextCurrent).GetAwaiter().GetResult();
-        Trampoline.StageRunners.Start(behaviorContextTrampoline, trampolineParts).GetAwaiter().GetResult();
+        NServiceBus.Trampoline.StageRunners.Start(behaviorContextTrampoline).GetAwaiter().GetResult();
     }
 
     [Benchmark(Baseline = true)]
@@ -60,7 +61,7 @@ public class PipelineExecutionTrampoline
     [Benchmark]
     public async Task Trampo()
     {
-        await Trampoline.StageRunners.Start(behaviorContextTrampoline, trampolineParts);
+        await Trampoline.StageRunners.Start(behaviorContextTrampoline);
     }
 
     class BehaviorContext : ContextBag, IBehaviorContext

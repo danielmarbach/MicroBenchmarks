@@ -50,12 +50,13 @@ public class PipelineWarmupTrampoline
         for (var i = 0; i < PipelineDepth; i++)
         {
             trampolineBehaviors[i] = new Trampoline.BehaviorTrampoline();
-            trampolineParts[i] = new Trampoline.PipelinePart(Trampoline.Behavior, [], i);
+            trampolineParts[i] = Trampoline.BehaviorPartFactory.Create<Trampoline.IBehaviorContext, Trampoline.BehaviorTrampoline>();
         }
 
         var behaviorContextTrampoline = new Trampoline.BehaviorContext
         {
             Behaviors =  trampolineBehaviors,
+            Parts =  trampolineParts
         };
 
         var coordinator = new StepRegistrationsCoordinator(currentPipelineModifications.Removals,
@@ -68,7 +69,7 @@ public class PipelineWarmupTrampoline
 
         consumer.Consume(coordinator);
 
-        await Trampoline.StageRunners.Start(behaviorContextTrampoline, trampolineParts);
+        await Trampoline.StageRunners.Start(behaviorContextTrampoline);
     }
 
     class BehaviorContext : ContextBag, IBehaviorContext
