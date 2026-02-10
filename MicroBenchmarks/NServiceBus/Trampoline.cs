@@ -9,6 +9,19 @@ namespace MicroBenchmarks.NServiceBus;
 
 public static class Trampoline
 {
+    [DebuggerStepThrough]
+    [DebuggerHidden]
+    [DebuggerNonUserCode]
+    [StackTraceHidden]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Task TrampolineInvoke(IBehaviorContext ctx, int start, int rangeEnd)
+    {
+        var context = Unsafe.As<BehaviorContext>(ctx);
+        scoped ref var frame = ref context.Frame;
+        var behavior = context.GetBehavior<BehaviorTrampoline>(frame.Index);
+        return behavior.Invoke(ctx, StageRunners.Next);
+    }
+
     public sealed class BehaviorTrampoline : IBehavior<IBehaviorContext, IBehaviorContext>
     {
         public Task Invoke(IBehaviorContext context, Func<IBehaviorContext, Task> next)

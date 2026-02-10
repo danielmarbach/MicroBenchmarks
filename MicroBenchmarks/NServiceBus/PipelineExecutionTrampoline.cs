@@ -38,7 +38,8 @@ public class PipelineExecutionTrampoline
         for (var i = 0; i < PipelineDepth; i++)
         {
             trampolineBehaviors[i] = new Trampoline.BehaviorTrampoline();
-            trampolineParts[i] = Trampoline.BehaviorPartFactory.Create<Trampoline.IBehaviorContext, Trampoline.BehaviorTrampoline>();
+            // trampolineParts[i] = Trampoline.BehaviorPartFactory.Create<Trampoline.IBehaviorContext, Trampoline.BehaviorTrampoline>();
+            trampolineParts[i] = new Trampoline.PipelinePart(Trampoline.TrampolineInvoke);
         }
 
         behaviorContextTrampoline = new Trampoline.BehaviorContext
