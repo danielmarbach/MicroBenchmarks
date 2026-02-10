@@ -39,7 +39,6 @@ public class PipelineExecutionTrampoline
         {
             trampolineBehaviors[i] = new Trampoline.BehaviorTrampoline();
             trampolineParts[i] = Trampoline.BehaviorPartFactory.Create<Trampoline.IBehaviorContext, Trampoline.BehaviorTrampoline>();
-            // trampolineParts[i] = new Trampoline.PipelinePart(Trampoline.TrampolineInvoke);
         }
 
         behaviorContextTrampoline = new Trampoline.BehaviorContext
@@ -50,7 +49,7 @@ public class PipelineExecutionTrampoline
 
         // warmup and cache
         currentPipeline.Invoke(behaviorContextCurrent).GetAwaiter().GetResult();
-        NServiceBus.Trampoline.StageRunners.Start(behaviorContextTrampoline).GetAwaiter().GetResult();
+        Trampoline.StageRunners.Start(behaviorContextTrampoline).GetAwaiter().GetResult();
     }
 
     [Benchmark(Baseline = true)]
