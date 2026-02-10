@@ -43,10 +43,10 @@ public class PipelineExceptionTrampoline
         {
             trampolineBehaviors[i] = new Trampoline.BehaviorTrampoline();
             trampolineParts[i] =  Trampoline.BehaviorPartFactory.Create<Trampoline.IBehaviorContext, Trampoline.BehaviorTrampoline>();
-            // trampolineParts[i] =  new Trampoline.PipelinePart(Trampoline.TrampolineInvoke);
+            // trampolineParts[i] = new Trampoline.PipelinePart(Trampoline.TrampolineInvoke);
         }
 
-        trampolineBehaviors[PipelineDepth] = new Throwing();
+        trampolineBehaviors[PipelineDepth] = new Trampoline.ThrowingTrampoline();
         trampolineParts[PipelineDepth] = Trampoline.BehaviorPartFactory.Create<Trampoline.IBehaviorContext, Trampoline.ThrowingTrampoline>();
         // trampolineParts[PipelineDepth] = new Trampoline.PipelinePart(Trampoline.ThrowingInvoke);
 
