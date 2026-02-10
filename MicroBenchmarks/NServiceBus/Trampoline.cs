@@ -184,6 +184,7 @@ public static class Trampoline
         [DebuggerHidden]
         [DebuggerNonUserCode]
         [StackTraceHidden]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Task Complete(IBehaviorContext ctx)
         {
             var context = Unsafe.As<BehaviorContext>(ctx);
@@ -216,6 +217,7 @@ public static class Trampoline
                 };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PipelinePart Create<TContext, TBehavior>()
             where TContext : class, IBehaviorContext
             where TBehavior : class, IBehavior<TContext, TContext>
