@@ -99,7 +99,6 @@ public static class Trampoline
 
     public readonly record struct PipelinePart(
         byte InvokerId,
-        Func<IBehaviorContext, int, int, Task>? FallbackInvoke,
         int ChildStart,
         int ChildEnd);
 
@@ -161,7 +160,7 @@ public static class Trampoline
         {
             var invokerId = PipelinePartInvokerIds.GetBehaviorId(typeof(TContext));
             var fallback = invokerId == PipelinePartInvokerIds.Fallback ? Cache<TContext, TBehavior>.Invoke : null;
-            return new PipelinePart(invokerId, fallback, 0, 0);
+            return new PipelinePart(invokerId, 0, 0);
         }
 
         private static class Cache<TContext, TBehavior>
@@ -196,7 +195,7 @@ public static class Trampoline
             var fallback = invokerId == PipelinePartInvokerIds.Fallback
                 ? Cache<TInContext, TOutContext, TBehavior>.Invoke
                 : null;
-            return new PipelinePart(invokerId, fallback, childStartIndex, childEndIndex);
+            return new PipelinePart(invokerId, childStartIndex, childEndIndex);
         }
 
         private static class Cache<TInContext, TOutContext, TBehavior>
@@ -276,11 +275,6 @@ public static class Trampoline
         [DoesNotReturn]
         private static Task InvokeFallback(IBehaviorContext ctx, in PipelinePart part)
         {
-            // if (part.FallbackInvoke != null)
-            // {
-            //     return part.FallbackInvoke(ctx, part.ChildStart, part.ChildEnd);
-            // }
-
             throw new InvalidOperationException(
                 $"Unknown invoker id '{part.InvokerId}' and no fallback delegate was provided.");
         }
