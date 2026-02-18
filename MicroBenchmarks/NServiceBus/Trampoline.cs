@@ -130,20 +130,61 @@ public static class Trampoline
             ref var frame = ref context.Frame;
             var nextIndex = ++frame.Index;
 
-            if ((uint)nextIndex >= (uint)frame.RangeEnd) return Task.CompletedTask;
+            if ((uint)nextIndex >= (uint)frame.RangeEnd)
+            {
+                context.Frame = frame;
+                return Task.CompletedTask;
+            }
 
-            return Dispatch(ctx, nextIndex);
+            Task task;
+            try
+            {
+                task = Dispatch(ctx, nextIndex);
+            }
+#pragma warning disable PS0019
+            catch (Exception)
+#pragma warning restore PS0019
+            {
+                context.Frame = frame;
+                throw;
+            }
+
+            if (!task.IsCompleted)
+            {
+                return AwaitAndRestore(task, context, frame);
+            }
+
+            context.Frame = frame;
+            return task;
         }
 
         [DebuggerStepThrough]
         [DebuggerHidden]
         [DebuggerNonUserCode]
+        [StackTraceHidden]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Task Dispatch(IBehaviorContext ctx, int index)
         {
             var context = Unsafe.As<BehaviorContext>(ctx);
             ref var part = ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(context.Parts), index);
             return KnownPipelineInvokers.Invoke(ctx, part);
+        }
+
+        [DebuggerStepThrough]
+        [DebuggerHidden]
+        [DebuggerNonUserCode]
+        [StackTraceHidden]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static async Task AwaitAndRestore(Task task, BehaviorContext ctx, PipelineFrame frame)
+        {
+            try
+            {
+                await task.ConfigureAwait(false);
+            }
+            finally
+            {
+                ctx.Frame = frame;
+            }
         }
     }
 
