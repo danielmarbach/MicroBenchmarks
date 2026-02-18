@@ -91,7 +91,7 @@ public class PipelineTrampolineMatrix
     [BenchmarkCategory("Success")]
     public Task Trampo_Success() => trampolineTrampolineStart(trampolineSuccessContext);
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     [BenchmarkCategory("ExceptionSync")]
     public async Task<Exception?> Current_Exception_Sync()
     {
@@ -123,7 +123,7 @@ public class PipelineTrampolineMatrix
         return null;
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     [BenchmarkCategory("Exception")]
     public async Task<Exception?> Current_Exception()
     {
@@ -155,7 +155,7 @@ public class PipelineTrampolineMatrix
         return null;
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     [BenchmarkCategory("Replay")]
     public Task Current_Replay() => currentReplayPipeline.Invoke(currentContext);
 
