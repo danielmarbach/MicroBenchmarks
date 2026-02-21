@@ -57,6 +57,8 @@ public static class Trampoline
     public class BehaviorContext : IBehaviorContext
     {
         internal PipelineFrame Frame;
+        PipelineFrame[]? restoreFrames;
+        int restoreFrameCount;
 
         public BehaviorContext(IBehaviorContext? parent = null)
         {
@@ -76,6 +78,36 @@ public static class Trampoline
 
         internal IBehavior[] Behaviors { get; init; }
         internal PipelinePart[] Parts { get; init; }
+
+        [DebuggerNonUserCode]
+        [DebuggerStepThrough]
+        [DebuggerHidden]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void PushRestoreFrame(PipelineFrame frame)
+        {
+            var restoreCount = restoreFrameCount;
+            var frames = restoreFrames;
+
+            if (frames is null)
+            {
+                frames = new PipelineFrame[Behaviors.Length];
+                restoreFrames = frames;
+            }
+
+            frames[restoreCount] = frame;
+            restoreFrameCount = restoreCount + 1;
+        }
+
+        [DebuggerNonUserCode]
+        [DebuggerStepThrough]
+        [DebuggerHidden]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal PipelineFrame PopRestoreFrame()
+        {
+            var restoreCount = restoreFrameCount - 1;
+            restoreFrameCount = restoreCount;
+            return restoreFrames![restoreCount];
+        }
 
         [DebuggerNonUserCode]
         [DebuggerStepThrough]

@@ -20,7 +20,9 @@ public class PipelineTrampolineMatrix
 
     private Trampoline.BehaviorContext trampolineSuccessContext;
     private Trampoline.BehaviorContext trampolineSyncExceptionContext;
+    private Trampoline.BehaviorContext trampolineSyncExceptionContinueWithContext;
     private Trampoline.BehaviorContext trampolineExceptionContext;
+    private Trampoline.BehaviorContext trampolineExceptionContinueWithContext;
     private Trampoline.BehaviorContext trampolineReplayContext;
 
     [Params(10, 20, 40)]
@@ -41,7 +43,9 @@ public class PipelineTrampolineMatrix
 
         trampolineSuccessContext = CreateTrampolineSuccessContext(PipelineDepth);
         trampolineSyncExceptionContext = CreateTrampolineSyncExceptionContext(PipelineDepth);
+        trampolineSyncExceptionContinueWithContext = CreateTrampolineSyncExceptionContext(PipelineDepth);
         trampolineExceptionContext = CreateTrampolineExceptionContext(PipelineDepth);
+        trampolineExceptionContinueWithContext = CreateTrampolineExceptionContext(PipelineDepth);
         trampolineReplayContext = CreateTrampolineReplayContext(PipelineDepth, ReplayCount);
 
         currentSuccessPipeline.Invoke(currentContext).GetAwaiter().GetResult();
@@ -65,6 +69,14 @@ public class PipelineTrampolineMatrix
 
         try
         {
+            trampolineContinueWithStart(trampolineSyncExceptionContinueWithContext).GetAwaiter().GetResult();
+        }
+        catch (Exception)
+        {
+        }
+
+        try
+        {
             currentExceptionPipeline.Invoke(currentContext).GetAwaiter().GetResult();
         }
         catch (Exception)
@@ -74,6 +86,14 @@ public class PipelineTrampolineMatrix
         try
         {
             trampolineTrampolineStart(trampolineExceptionContext).GetAwaiter().GetResult();
+        }
+        catch (Exception)
+        {
+        }
+
+        try
+        {
+            trampolineContinueWithStart(trampolineExceptionContinueWithContext).GetAwaiter().GetResult();
         }
         catch (Exception)
         {
@@ -90,6 +110,10 @@ public class PipelineTrampolineMatrix
     [Benchmark]
     [BenchmarkCategory("Success")]
     public Task Trampo_Success() => trampolineTrampolineStart(trampolineSuccessContext);
+
+    [Benchmark]
+    [BenchmarkCategory("Success")]
+    public Task Trampo_ContinueWith_Success() => trampolineContinueWithStart(trampolineSuccessContext);
 
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("ExceptionSync")]
@@ -114,6 +138,22 @@ public class PipelineTrampolineMatrix
         try
         {
             await trampolineTrampolineStart(trampolineSyncExceptionContext).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            return ex;
+        }
+
+        return null;
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("ExceptionSync")]
+    public async Task<Exception?> Trampo_Exception_Sync_ContinueWith()
+    {
+        try
+        {
+            await trampolineContinueWithStart(trampolineSyncExceptionContinueWithContext).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -155,6 +195,22 @@ public class PipelineTrampolineMatrix
         return null;
     }
 
+    [Benchmark]
+    [BenchmarkCategory("Exception")]
+    public async Task<Exception?> Trampo_Exception_ContinueWith()
+    {
+        try
+        {
+            await trampolineContinueWithStart(trampolineExceptionContinueWithContext).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            return ex;
+        }
+
+        return null;
+    }
+
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("Replay")]
     public Task Current_Replay() => currentReplayPipeline.Invoke(currentContext);
@@ -164,6 +220,7 @@ public class PipelineTrampolineMatrix
     public Task Trampo_Replay() => trampolineTrampolineStart(trampolineReplayContext);
 
     static Task trampolineTrampolineStart(Trampoline.BehaviorContext context) => Trampoline.StageRunners.Start(context);
+    static Task trampolineContinueWithStart(Trampoline.BehaviorContext context) => TrampolineContinueWith.StageRunners.Start(context);
 
     static PipelineAfterOptimizationsUnsafeAndMemoryMarshal<IBehaviorContext> CreateCurrentSuccessPipeline(int depth)
     {

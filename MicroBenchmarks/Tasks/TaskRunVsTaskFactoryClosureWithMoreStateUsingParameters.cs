@@ -29,7 +29,7 @@ public class TaskRunVsTaskFactoryClosureWithMoreStateUsingParameters
     State state5Field;
 
     [GlobalSetup]
-    void Setup()
+    public void Setup()
     {
         state1Field = new State();
         state2Field = new State();
