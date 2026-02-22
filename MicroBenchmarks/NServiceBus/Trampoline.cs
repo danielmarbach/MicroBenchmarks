@@ -78,6 +78,7 @@ public static class Trampoline
 
         internal IBehavior[] Behaviors { get; init; }
         internal PipelinePart[] Parts { get; init; }
+        internal Func<IBehaviorContext, Task>? PrewiredRoot { get; set; }
 
         [DebuggerNonUserCode]
         [DebuggerStepThrough]
