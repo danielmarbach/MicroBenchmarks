@@ -6,7 +6,7 @@ using BenchmarkDotNet.Order;
 
 namespace MicroBenchmarks.NServiceBus;
 
-[SimpleJob]
+[MediumRunJob]
 [MemoryDiagnoser]
 [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
 [Orderer(SummaryOrderPolicy.FastestToSlowest, MethodOrderPolicy.Alphabetical)]
