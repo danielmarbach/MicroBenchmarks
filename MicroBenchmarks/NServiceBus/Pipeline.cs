@@ -18,9 +18,54 @@ public interface IBehavior<in TInContext, out TOutContext> : IBehavior
     where TOutContext : IBehaviorContext
 {
     Task Invoke(TInContext context, Func<TOutContext, Task> next);
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    InvokerNode IBehavior.CreateInvokerNode(InvokerNode? next)
+    {
+        Func<TOutContext, Task> nextFunc;
+        if (next is null)
+        {
+            nextFunc = CompletedNextCache<TOutContext>.Next;
+        }
+        else
+        {
+            Func<IBehaviorContext, Task> fn = next.Invoke;
+            nextFunc = Unsafe.As<Func<IBehaviorContext, Task>, Func<TOutContext, Task>>(ref fn);
+        }
+
+        return new InvokerNode<TInContext, TOutContext>(this, nextFunc);
+    }
 }
 
-public interface IBehavior;
+public interface IBehavior
+{
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    InvokerNode CreateInvokerNode(InvokerNode? next) => throw new NotImplementedException();
+}
+
+public abstract class InvokerNode
+{
+    public abstract Task Invoke(IBehaviorContext context);
+}
+
+sealed class InvokerNode<TInContext, TOutContext>(IBehavior<TInContext, TOutContext> behavior, Func<TOutContext, Task> next)
+    : InvokerNode
+    where TInContext : IBehaviorContext
+    where TOutContext : IBehaviorContext
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public override Task Invoke(IBehaviorContext context)
+    {
+        object obj = context;
+        return behavior.Invoke(Unsafe.As<object, TInContext>(ref obj), next);
+    }
+}
+
+static class CompletedNextCache<TOutContext>
+    where TOutContext : IBehaviorContext
+{
+    public static readonly Func<TOutContext, Task> Next = _ => Task.CompletedTask;
+}
 
 public class ContextBag
 {
